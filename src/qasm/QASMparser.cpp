@@ -273,6 +273,7 @@ void QASMparser::addUgate(int target, double theta, double phi, double lambda) {
     g.control = -1;
     snprintf ( g.type, 127, "U(%f, %f, %f)", theta, phi, lambda);
 
+	/*
     layer = last_layer[g.target] + 1;
     last_layer[g.target] = layer;
 
@@ -280,6 +281,8 @@ void QASMparser::addUgate(int target, double theta, double phi, double lambda) {
         layers.push_back(std::vector<gate>());
     }
     layers[layer].push_back(g);
+	*/
+	gates.push_back(g);
     ngates++;
 }
 
@@ -291,6 +294,7 @@ void QASMparser::addCXgate(int target, int control) {
     g.control = control;
     snprintf ( g.type, 127, "CX");
 
+	/*
     layer = std::max(last_layer[g.target], last_layer[g.control]) + 1;
     last_layer[g.target] = last_layer[g.control] = layer;
 
@@ -299,6 +303,8 @@ void QASMparser::addCXgate(int target, int control) {
     }
 
     layers[layer].push_back(g);
+	*/
+	gates.push_back(g);
     ngates++;
 }
 
@@ -857,4 +863,13 @@ void QASMparser::Parse() {
             exit(1);
 		}
 	} while (sym != Token::Kind::eof);
+}
+
+void QASMparser::clear() {
+	std::map<std::string, std::pair<int, int*>>::iterator it;
+
+	for ( it = cregs.begin(); it != cregs.end(); it++ ) {
+		delete[] it->second.second;
+		it->second.second = nullptr;
+	}
 }

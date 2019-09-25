@@ -1,0 +1,65 @@
+#include "mapper.hpp"
+
+circuit_properties create_circuit_properties() {
+    circuit_properties p;
+    p.locations  = new int[nqubits];
+	p.qubits     = new int[positions];
+	p.depths     = new int[positions]();
+	p.fidelities = new int[positions](); 
+	
+	//Initially, no physical qubit is occupied
+	for (int i = 0; i < positions; i++) {
+		p.qubits[i] = -1;
+	}
+
+	//Initially, no logical qubit is mapped to a physical one
+	for(unsigned i = 0; i < nqubits; i++) {
+		p.locations[i] = -1;
+	}
+
+    return p;
+}
+
+void adapt_circuit_properties(circuit_properties& p, const node& n) {
+	delete_circuit_properties(p);
+	p.locations  = n.locations;
+	p.qubits     = n.qubits;
+	p.depths     = n.depths;
+	p.fidelities = n.fidelities;
+}
+
+// adapts the properties of the current qubits
+void update_properties(const int layer, circuit_properties& p) {
+	for(vector<QASMparser::gate>::iterator it = layers[layer].begin(); it != layers[layer].end(); it++) {
+	    QASMparser::gate g = *it;
+		int pt = p.locations[g.target];
+		if(g.control != -1) {
+			int pc        = p.locations[g.control];
+			int max_depth = max(p.depths[pc], p.depths[pt]) + DEPTH_GATE;
+            p.depths[pc]  = max_depth;
+			p.depths[pt]  = max_depth;
+            p.fidelities[pt] += FIDELITY_CNOT;
+            p.fidelities[pc] += FIDELITY_CNOT;
+
+			edge e;
+			e.v1 = pc;
+			e.v2 = pt;
+			if (graph.find(e) == graph.end()) {
+				p.depths[pt]     += DEPTH_GATE    << 1; 
+				p.depths[pc]     += DEPTH_GATE    << 1;
+				p.fidelities[pt] += FIDELITY_GATE << 1;
+				p.fidelities[pc] += FIDELITY_GATE << 1; // * 2
+			}
+		} else {
+			p.depths[pt]     += DEPTH_GATE;
+        	p.fidelities[pt] += FIDELITY_GATE;
+		}
+	}
+}
+
+void delete_circuit_properties(circuit_properties& p) {
+    delete[] p.locations;
+	delete[] p.qubits;	
+	delete[] p.depths;	
+	delete[] p.fidelities;
+}

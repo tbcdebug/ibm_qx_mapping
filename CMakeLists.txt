@@ -6,5 +6,9 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
 SET(CMAKE_CXX_FLAGS "-Wall -g -O2 -DNDEBUG -DVERSION=\"$(VERSION)\" -std=c++11")
 
 
-add_executable(ibm_qx_mapping src/main.cpp src/QASMparser.cpp src/QASMscanner.cpp src/QASMtoken.cpp)
-include_directories(src)
+FIND_PACKAGE( Boost 1.50 COMPONENTS program_options REQUIRED )
+INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
+
+add_executable(ibm_qx_mapping src/main.cpp src/qasm/QASMparser.cpp src/qasm/QASMscanner.cpp src/qasm/QASMtoken.cpp src/coupling_graph.cpp src/mapping.cpp src/utility.cpp src/layer_handling.cpp src/circuit_properties src/node_handling.cpp src/cost.cpp)
+include_directories(src src/qasm)
+target_link_libraries(ibm_qx_mapping boost_program_options)

@@ -1,15 +1,30 @@
+#ifndef UNIQUE_PRIORITY_QUEUE_H
+#define UNIQUE_PRIORITY_QUEUE_H
+
 #include <set>
 #include <queue>
 #include <assert.h>
 
-#ifndef UNIQUE_PRIORITY_QUEUE_H
-#define UNIQUE_PRIORITY_QUEUE_H
+const int    MAX_QUEUE_SIZE               = 6000000;
+const int    MAX_NODES_MARGIN             = 500000;
+const int    MAX_QUEUE_COPY_LENGTH        = 1000000;
+const double QUEUE_COPY_LENGTH_PERCENTAGE = 1/((double)6);
+
+#define UNUSED(x) ((void)x)
 
 template<class T>
 struct do_nothing {
     void operator()(const T&){
         // intentionally left blank
     }
+};
+
+template<class T, class Container = std::vector<T>, class Compare = std::less<typename Container::value_type>>
+class own_priority_queue : public std::priority_queue<T, Container, Compare> {
+	public:
+		Container& get_container() {
+            return this->c;
+        }
 };
 
 /**
@@ -20,7 +35,7 @@ template<class T, class CleanObsoleteElement = do_nothing<T>, class CostCompare 
 class unique_priority_queue
 {
 public:
-    typedef typename std::priority_queue<T, std::vector<T>, CostCompare>::size_type size_type;
+    typedef typename own_priority_queue<T, std::vector<T>, CostCompare>::size_type size_type;
 
     /**
      * Return true if the element was inserted into the queue.
@@ -37,11 +52,11 @@ public:
         else if (CostCompare()(*(insertion_pair.first), v))
         {
             const auto number_erased = membership_.erase(*(insertion_pair.first));
-            assert(number_erased == 1);
+            assert(number_erased == 1); UNUSED(number_erased);
             CleanObsoleteElement()(*(insertion_pair.first));
             const auto inserted = membership_.insert(v);
-            assert(inserted.second);
-            queue_ = std::priority_queue<T, std::vector<T>, CostCompare>();
+            assert(inserted.second); UNUSED(inserted);
+            queue_ = own_priority_queue<T, std::vector<T>, CostCompare>();
             for(const auto& element : membership_) {
                 queue_.push(element);
             }
@@ -60,7 +75,7 @@ public:
         const auto& top_element = queue_.top();
         const auto number_erased = membership_.erase(top_element);
 
-        assert(number_erased == 1);
+        assert(number_erased == 1); UNUSED(number_erased);
 
         queue_.pop();
         assert(queue_.size() == membership_.size());
@@ -83,8 +98,50 @@ public:
         return queue_.size();
     }
 
+    std::vector<T>& get_container() 
+    {
+        return queue_.get_container();
+    }
+
+    void delete_queue() 
+    {
+        std::vector<T> &v = get_container();
+        for(typename std::vector<T>::const_iterator it = v.begin(); it != v.end();
+            it++) {
+            CleanObsoleteElement()(*it);
+        }
+    }
+
+    // clears the queue until a certain length is reached
+    void update() 
+    {	
+        T temp_queue[MAX_QUEUE_SIZE];
+        unsigned int length = std::min((int)(queue_.size() * QUEUE_COPY_LENGTH_PERCENTAGE), MAX_QUEUE_COPY_LENGTH);
+        
+        for(unsigned int i = 0; i < length; i++) {
+            temp_queue[i] = queue_.top();
+            queue_.pop();	
+
+            last_node_copied = i;	
+        }
+        delete_queue();
+        for(unsigned int i = 0; i < length; i++) {
+            queue_.push(temp_queue[i]);		
+        }
+        
+        std::cout << "RESULTING SIZE: " << queue_.size() << std::endl;
+    }
+
+    void restart(T& n) 
+    {
+        delete_queue();
+        queue_.push(n);
+    }
+
+
 private:
-    std::priority_queue<T, std::vector<T>, CostCompare> queue_;
+    own_priority_queue<T, std::vector<T>, CostCompare> queue_;
     std::set<T, FuncCompare> membership_;
+    unsigned int last_node_copied = 0;
 };
 #endif
