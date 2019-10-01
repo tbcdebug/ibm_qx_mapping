@@ -858,3 +858,12 @@ void QASMparser::Parse() {
 		}
 	} while (sym != Token::Kind::eof);
 }
+
+void QASMparser::clear() {
+	std::map<std::string, std::pair<int, int*>>::iterator it;
+
+	for ( it = cregs.begin(); it != cregs.end(); it++ ) {
+		delete[] it->second.second;
+		it->second.second = nullptr;
+	}
+}

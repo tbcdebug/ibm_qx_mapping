@@ -56,6 +56,11 @@ public:
         return ngates;
     }
 
+	std::vector<gate> getGates() {
+		return gates;
+	}
+
+	void clear();
 private:
 	class Expr {
 	public:
@@ -194,6 +199,7 @@ private:
 	Expr* RewriteExpr(Expr* expr, std::map<std::string, Expr*>& exprMap);
 	void printExpr(Expr* expr);
 
+	std::vector<gate> gates;
 	std::vector<std::vector<gate> > layers;
 
 	unsigned int nqubits = 0;
