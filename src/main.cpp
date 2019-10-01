@@ -5,7 +5,7 @@
 #include <climits>
 #include <fstream>
 
-#include "QASMparser.h"
+#include "qasm/QASMparser.h"
 #include "unique_priority_queue.h"
 
 #define LOOK_AHEAD 1
