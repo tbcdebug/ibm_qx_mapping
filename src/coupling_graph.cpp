@@ -4,9 +4,9 @@ static void set_dijkstra_node(dijkstra_node* nodes, priority_queue<dijkstra_node
 			       		      const int parent, const int pos, const bool contains_correct_edge);
 static void dijkstra(dijkstra_node* nodes, const int start, const set<edge>& graph);
 static void build_dist_table(const set<edge>& graph);
-static void build_graph_linear(int nqubits);
-static void build_graph_NN(int nqubits);
-static void build_graph_QX5();
+static void build_graph_linear(int nqubits)           UNUSED_FUNCTION;
+static void build_graph_NN(int nqubits)               UNUSED_FUNCTION;
+static void build_graph_QX5()                         UNUSED_FUNCTION;
 
 
 static void set_dijkstra_node(dijkstra_node* nodes, priority_queue<dijkstra_node*, vector<dijkstra_node*>, dijkstra_node_cmp>& queue,
@@ -82,6 +82,8 @@ bool generate_graph(const string input) {
     if(input.empty()) {
 #if ARCH == ARCH_LINEAR_N
 		build_graph_linear(nqubits);
+#elif ARCH == ARCH_LINEAR_NN
+		build_graph_NN(nqubits):
 #elif ARCH == ARCH_IBM_QX5
 		build_graph_QX5();
 #else
@@ -122,7 +124,6 @@ bool generate_graph(const string input) {
 	return true;
 }
 
-
 //build a graph representing the coupling map of nearest neighbor
 static void build_graph_linear(int nqubits) {
 	graph.clear();
@@ -132,11 +133,6 @@ static void build_graph_linear(int nqubits) {
         graph.insert(edge{i, i+1});
         graph.insert(edge{i+1, i});
 	}
-}
-
-static void build_graph_NN(int nqubits) {
-	build_graph_linear(nqubits);
-    positions = 16;
 }
 
 //build a graph representing the coupling map of IBM QX5
@@ -210,4 +206,9 @@ static void build_graph_QX5() {
 	e.v1 = 15;
 	e.v2 = 2;
 	graph.insert(e);
+}
+
+static void build_graph_NN(int nqubits) {
+	build_graph_linear(nqubits);
+	positions = 16;
 }

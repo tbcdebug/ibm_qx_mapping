@@ -42,13 +42,14 @@ vector<vector<QASMparser::gate>> init_layers(const vector<QASMparser::gate> &gat
 
 // returns the next layer with cnot gates
 unsigned int get_next_layer(const unsigned int layer) {
-	for(unsigned int next_layer = layer + 1; next_layer < layers.size(); next_layer++) {  //DONE for loop
+	unsigned int next_layer = layer+1;
+	while(next_layer < layers.size()) {
 		for(vector<QASMparser::gate>::iterator it = layers[next_layer].begin(); it != layers[next_layer].end(); it++) {
 			if(it->control != -1) {
 				return next_layer;
 			}
 		}
-		
+		next_layer++;
 	}
 	return -1;
 }
