@@ -115,30 +115,14 @@ int main(int argc, char** argv) {
 	// start mapping algorithm
 	clock_t begin_time = clock();
 
-	// setup
-	/*
-	int *locations = new int[nqubits];
-	int *qubits    = new int[positions];
-
-	// Initially, no physical qubit is occupied
-	for (int i = 0; i < positions; i++) {
-		qubits[i] = -1;
-	}
-
-	// Initially, no logical qubit is mapped to a physical one
-	for(unsigned i = 0; i < nqubits; i++) {
-		locations[i] = -1;
-	}
-	*/
 	int                              total_swaps = 0;	
 	circuit_properties               properties  = create_circuit_properties();
     vector<QASMparser::gate>         all_gates;
 	vector<vector<QASMparser::gate>> mapped_circuit;
 
-	mapper(gates, mapped_circuit, all_gates, total_swaps, properties);
+	mapping(gates, mapped_circuit, all_gates, total_swaps, properties);
 
 	double time = double(clock() - begin_time) / CLOCKS_PER_SEC;
-
 	
 	// print statistics
 	if(verbose) {

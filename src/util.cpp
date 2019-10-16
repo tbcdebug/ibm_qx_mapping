@@ -410,7 +410,75 @@ node a_star_fixlayer(int layer, int* map, int* loc, double** dist) {
 	return result;
 }
 
-int mapper(const vector<QASMparser::gate>& gates, vector<vector<QASMparser::gate>>& mapped_circuit, 
+// fix the position of the single qubit gates
+void fix_positions_of_single_qubit_gates(int* locations, int* qubits, vector<QASMparser::gate>& all_gates) {
+	for(std::vector<QASMparser::gate>::reverse_iterator it = all_gates.rbegin(); it != all_gates.rend(); it++) {
+		if(strcmp(it->type, "SWP") == 0) {
+			int tmp_qubit1 = qubits[it->control];
+			int tmp_qubit2 = qubits[it->target];
+			qubits[it->control] = tmp_qubit2;
+			qubits[it->target] = tmp_qubit1;
+
+			if(tmp_qubit1 != -1) {
+				locations[tmp_qubit1] = it->target;
+			}
+			if(tmp_qubit2 != -1) {
+				locations[tmp_qubit2] = it->control;
+			}
+		}
+		if(it->target < 0) {
+			int target = -(it->target +1);
+			it->target = locations[target];
+			if(locations[target] == -1) {
+				//This qubit occurs only in single qubit gates -> it can be mapped to an arbirary physical qubit
+				int loc = 0;
+				while(qubits[loc] != -1) {
+					loc++;
+				}
+				locations[target] = loc;
+			}
+		}
+	}
+}
+
+void generate_circuit(vector<vector<QASMparser::gate>>& mapped_circuit, const vector<QASMparser::gate>& all_gates) {
+	int *last_layer = new int[positions];
+	for(int i=0; i<positions; i++) {
+		last_layer[i] = -1;
+	}
+
+	//build resulting circuit
+	for(std::vector<QASMparser::gate>::const_iterator it = all_gates.begin(); it != all_gates.end(); it++) {
+		if(strcmp(it->type, "SWP") == 0) {
+			continue;
+		}
+		if(it->control == -1) {
+			//single qubit gate
+			QASMparser::gate g = *it;
+			unsigned int layer = last_layer[g.target] + 1;
+
+			if (mapped_circuit.size() <= layer) {
+				mapped_circuit.push_back(std::vector<QASMparser::gate>());
+			}
+			mapped_circuit[layer].push_back(g);
+			last_layer[g.target] = layer;
+		} else {
+			QASMparser::gate g = *it;
+			unsigned int layer = std::max(last_layer[g.control], last_layer[g.target]) + 1;
+			if (mapped_circuit.size() <= layer) {
+				mapped_circuit.push_back(std::vector<QASMparser::gate>());
+			}
+			mapped_circuit[layer].push_back(g);
+
+			last_layer[g.target] = layer;
+			last_layer[g.control] = layer;
+		}
+	}
+	
+	delete[] last_layer;
+}
+
+void mapping(const vector<QASMparser::gate>& gates, vector<vector<QASMparser::gate>>& mapped_circuit, 
 			vector<QASMparser::gate>& all_gates, int &total_swaps, circuit_properties& properties) {
 	int* qubits    = properties.qubits;
 	int* locations = properties.locations;
@@ -573,72 +641,8 @@ int mapper(const vector<QASMparser::gate>& gates, vector<vector<QASMparser::gate
 			}
 		}
 
-	}
-	
-	//Fix the position of the single qubit gates
-	for(std::vector<QASMparser::gate>::reverse_iterator it = all_gates.rbegin(); it != all_gates.rend(); it++) {
-		if(strcmp(it->type, "SWP") == 0) {
-			int tmp_qubit1 = qubits[it->control];
-			int tmp_qubit2 = qubits[it->target];
-			qubits[it->control] = tmp_qubit2;
-			qubits[it->target] = tmp_qubit1;
+	}	
 
-			if(tmp_qubit1 != -1) {
-				locations[tmp_qubit1] = it->target;
-			}
-			if(tmp_qubit2 != -1) {
-				locations[tmp_qubit2] = it->control;
-			}
-		}
-		if(it->target < 0) {
-			int target = -(it->target +1);
-			it->target = locations[target];
-			if(locations[target] == -1) {
-				//This qubit occurs only in single qubit gates -> it can be mapped to an arbirary physical qubit
-				int loc = 0;
-				while(qubits[loc] != -1) {
-					loc++;
-				}
-				locations[target] = loc;
-			}
-		}
-	}
-
-
-	int *last_layer = new int[positions];
-	for(int i=0; i<positions; i++) {
-		last_layer[i] = -1;
-	}
-
-	//build resulting circuit
-	for(std::vector<QASMparser::gate>::iterator it = all_gates.begin(); it != all_gates.end(); it++) {
-		if(strcmp(it->type, "SWP") == 0) {
-			continue;
-		}
-		if(it->control == -1) {
-			//single qubit gate
-			QASMparser::gate g = *it;
-			unsigned int layer = last_layer[g.target] + 1;
-
-			if (mapped_circuit.size() <= layer) {
-				mapped_circuit.push_back(std::vector<QASMparser::gate>());
-			}
-			mapped_circuit[layer].push_back(g);
-			last_layer[g.target] = layer;
-		} else {
-			QASMparser::gate g = *it;
-			unsigned int layer = std::max(last_layer[g.control], last_layer[g.target]) + 1;
-			if (mapped_circuit.size() <= layer) {
-				mapped_circuit.push_back(std::vector<QASMparser::gate>());
-			}
-			mapped_circuit[layer].push_back(g);
-
-			last_layer[g.target] = layer;
-			last_layer[g.control] = layer;
-		}
-	}
-	
-	delete[] last_layer;
-
-	return 0;
+	fix_positions_of_single_qubit_gates(locations, qubits, all_gates);
+	generate_circuit(mapped_circuit, all_gates);
 }

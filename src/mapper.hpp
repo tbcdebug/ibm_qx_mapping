@@ -165,7 +165,7 @@ void               adapt_circuit_properties(circuit_properties& p, const node& n
 void 			   update_properties(const int layer, circuit_properties& p);
 
 
-int mapper(const vector<QASMparser::gate>& gates, vector<vector<QASMparser::gate>>& mapped_circuit, 
+void mapping(const vector<QASMparser::gate>& gates, vector<vector<QASMparser::gate>>& mapped_circuit, 
 			vector<QASMparser::gate>& all_gates, int &total_swaps, circuit_properties& properties);
 
 #endif /* MAPPER_H_ */
