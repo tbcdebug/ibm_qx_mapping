@@ -18,7 +18,7 @@
 
 #define LOOK_AHEAD 1
 #define HEURISTIC_ADMISSIBLE 0
-#define USE_INITIAL_MAPPING 0
+#define USE_INITIAL_MAPPING 0 
 #define MINIMAL_OUTPUT 1
 #define DUMP_MAPPED_CIRCUIT 0
 
@@ -114,6 +114,14 @@ struct cleanup_node {
 	}
 };
 
+// circuit properties
+struct circuit_properties {
+	int* locations;
+	int* qubits;
+	int* depths;
+	int* fidelities;
+};
+
 // dijkstra
 struct dijkstra_node {
 	int  pos;
@@ -145,7 +153,19 @@ bool generate_graph(const string input);
 // cost
 double calculate_heuristic_cost(const dijkstra_node* node);
 
+// layer_handling
+vector<vector<QASMparser::gate>> init_layers(const vector<QASMparser::gate> &gates);
+unsigned int get_next_layer(const unsigned int layer);
+unsigned int calculate_max_layer_width();
 
-int mapper(int argc, char** argv);
+// circuit_property_handling
+circuit_properties create_circuit_properties();
+void               delete_circuit_properties(circuit_properties& p);
+void               adapt_circuit_properties(circuit_properties& p, const node& n);
+void 			   update_properties(const int layer, circuit_properties& p);
+
+
+int mapper(const vector<QASMparser::gate>& gates, vector<vector<QASMparser::gate>>& mapped_circuit, 
+			vector<QASMparser::gate>& all_gates, int &total_swaps, circuit_properties& properties);
 
 #endif /* MAPPER_H_ */

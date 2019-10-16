@@ -71,21 +71,20 @@ int main(int argc, char** argv) {
 
 	if(verbose) {
 		cout << "Input:        " << input             << endl;
-		cout << "Output:       " << input_coupling    << endl;
-		cout << "Statistic:    " << output            << endl;
-		cout << "CouplingFile: " << output_statistics << endl;
+		cout << "Output:       " << output            << endl;
+		cout << "Statistic:    " << output_statistics << endl;
+		cout << "CouplingFile: " << input_coupling    << endl;
 		cout << "Verbose:      " << verbose           << endl;
 	}
 
 	// parsing	
-	QASMparser* parser = new QASMparser(argv[1]);
+	QASMparser* parser = new QASMparser(input.c_str());
 	parser->Parse();
 
-	layers  = parser->getLayers();
+	vector<QASMparser::gate> gates = parser->getGates();
 	nqubits = parser->getNqubits();
 	ngates  = parser->getNgates();
 
-	
 	parser->clear();
 	delete parser;
 
@@ -112,6 +111,73 @@ int main(int argc, char** argv) {
 	} else {
     	cout << bName << ',' << nqubits << ',' << ngates << ',' << layers.size() << ',' << flush;
 	}
+	
+	// start mapping algorithm
+	clock_t begin_time = clock();
 
-	mapper(argc, argv);
+	// setup
+	/*
+	int *locations = new int[nqubits];
+	int *qubits    = new int[positions];
+
+	// Initially, no physical qubit is occupied
+	for (int i = 0; i < positions; i++) {
+		qubits[i] = -1;
+	}
+
+	// Initially, no logical qubit is mapped to a physical one
+	for(unsigned i = 0; i < nqubits; i++) {
+		locations[i] = -1;
+	}
+	*/
+	int                              total_swaps = 0;	
+	circuit_properties               properties  = create_circuit_properties();
+    vector<QASMparser::gate>         all_gates;
+	vector<vector<QASMparser::gate>> mapped_circuit;
+
+	mapper(gates, mapped_circuit, all_gates, total_swaps, properties);
+
+	double time = double(clock() - begin_time) / CLOCKS_PER_SEC;
+
+	
+	// print statistics
+	if(verbose) {
+		cout << endl << "After mapping (no post mapping optimizations are conducted): " << endl;
+		cout << "  elementary gates: " << all_gates.size()-total_swaps << endl;
+		cout << "  depth: " << mapped_circuit.size() << endl;
+
+		cout << "\nThe mapping required " << time << " seconds" << endl;
+
+		cout << "\nInitial mapping of the logical qubits (q) to the physical qubits (Q) of the IBM QX5 architecture: " << endl;
+
+		for(uint i = 0; i < nqubits; i++) {
+			cout << "  q" << i << " is initially mapped to Q" << properties.locations[i] << endl;
+		} 
+	} else {
+    	cout << time << ',' << (all_gates.size()-total_swaps) << ',' << mapped_circuit.size() << endl;
+	}
+
+	if(!output.empty()) {
+		//Dump resulting circuit
+		ofstream of(argv[2]);
+
+		of << "OPENQASM 2.0;" << endl;
+		of << "include \"qelib1.inc\";" << endl;
+		of << "qreg q[16];" << endl;
+		of << "creg c[16];" << endl;
+
+		for (vector<vector<QASMparser::gate> >::iterator it = mapped_circuit.begin();
+				it != mapped_circuit.end(); it++) {
+			vector<QASMparser::gate> v = *it;
+			for (vector<QASMparser::gate>::iterator it2 = v.begin(); it2 != v.end(); it2++) {
+				of << it2->type << " ";
+				if (it2->control != -1) {
+					of << "q[" << it2->control << "],";
+				}
+				of << "q[" << it2->target << "];" << endl;
+			}
+		}
+	}
+
+	delete_circuit_properties(properties);
 }

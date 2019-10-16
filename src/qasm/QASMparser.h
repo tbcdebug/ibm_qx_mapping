@@ -44,7 +44,7 @@ public:
         char type[128];
     };
 
-    std::vector<std::vector<gate> > getLayers() {
+    std::vector<std::vector<gate>> getLayers() {
         return layers;
     }
 
@@ -200,7 +200,7 @@ private:
 	void printExpr(Expr* expr);
 
 	std::vector<gate> gates;
-	std::vector<std::vector<gate> > layers;
+	std::vector<std::vector<gate>> layers;
 
 	unsigned int nqubits = 0;
     int* last_layer;

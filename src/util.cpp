@@ -410,43 +410,15 @@ node a_star_fixlayer(int layer, int* map, int* loc, double** dist) {
 	return result;
 }
 
-int mapper(int argc, char** argv) {
+int mapper(const vector<QASMparser::gate>& gates, vector<vector<QASMparser::gate>>& mapped_circuit, 
+			vector<QASMparser::gate>& all_gates, int &total_swaps, circuit_properties& properties) {
+	int* qubits    = properties.qubits;
+	int* locations = properties.locations;
+	
+	// init layers
+	layers = init_layers(gates);
 
-#if DUMP_MAPPED_CIRCUIT
-	if(argc != 3) {
-        std::cerr << "Usage: " << argv[0] << " <input_file> <output_file>" << std::endl;
-        std::exit(1);
-	}
-#else
-	if(argc != 2) {
-        std::cerr << "Usage: " << argv[0] << " <input_file>" << std::endl;
-        std::exit(1);
-	}
-#endif
-
-	unsigned int width = 0;
-	for (std::vector<std::vector<QASMparser::gate> >::iterator it = layers.begin(); it != layers.end(); it++) {
-		if ((*it).size() > width) {
-			width = (*it).size();
-		}
-	}
-
-
-	int *locations = new int[nqubits];
-	int *qubits = new int[positions];
-
-	//Start mapping algorithm
-	clock_t begin_time = clock();
-
-	//Initially, no physical qubit is occupied
-	for (int i = 0; i < positions; i++) {
-		qubits[i] = -1;
-	}
-
-	//Initially, no logical qubit is mapped to a physical one
-	for(unsigned i = 0; i < nqubits; i++) {
-		locations[i] = -1;
-	}
+	unsigned int width = calculate_max_layer_width();
 
 #if USE_INITIAL_MAPPING
 	for (std::vector<QASMparser::gate>::iterator it = layers[0].begin(); it != layers[0].end(); it++) {
@@ -474,22 +446,16 @@ int mapper(int argc, char** argv) {
 		}
 	}
 #endif
-
-
-    std::vector<QASMparser::gate> all_gates;
-	int total_swaps = 0;
-
 	//Fix the mapping of each layer
 	for (unsigned int i = 0; i < layers.size(); i++) {
 		node result = a_star_fixlayer(i, qubits, locations, dist);
 
-		delete[] locations;
-		delete[] qubits;
-		locations = result.locations;
-		qubits = result.qubits;
+		adapt_circuit_properties(properties, result);	
+	    qubits    = properties.qubits;
+	    locations = properties.locations;
+
 
         std::vector<QASMparser::gate> h_gates = std::vector<QASMparser::gate>();
-
 		//The first layer does not require a permutation of the qubits
 		if (i != 0) {
 			//Add the required SWAPs to the circuits
@@ -541,7 +507,7 @@ int mapper(int argc, char** argv) {
 				}
 			}
 		}
-
+		
 		//Add all gates of the layer to the circuit
         std::vector<QASMparser::gate> layer_vec = layers[i];
 		for (std::vector<QASMparser::gate>::iterator it = layer_vec.begin();
@@ -561,7 +527,7 @@ int mapper(int argc, char** argv) {
 				}
 			} else {
 				//CNOT gate
-				g.target = locations[g.target];
+				g.target  = locations[g.target];
 				g.control = locations[g.control];
 
 				edge e;
@@ -594,6 +560,7 @@ int mapper(int argc, char** argv) {
 				all_gates.push_back(g);
 			}
 		}
+		
 		if (h_gates.size() != 0) {
 			if (result.cost_heur == 0) {
                 std::cerr << "ERROR: invalid heuristic cost!" << std::endl;
@@ -607,7 +574,7 @@ int mapper(int argc, char** argv) {
 		}
 
 	}
-
+	
 	//Fix the position of the single qubit gates
 	for(std::vector<QASMparser::gate>::reverse_iterator it = all_gates.rbegin(); it != all_gates.rend(); it++) {
 		if(strcmp(it->type, "SWP") == 0) {
@@ -643,9 +610,6 @@ int mapper(int argc, char** argv) {
 		last_layer[i] = -1;
 	}
 
-    std::vector<std::vector<QASMparser::gate> > mapped_circuit;
-
-
 	//build resulting circuit
 	for(std::vector<QASMparser::gate>::iterator it = all_gates.begin(); it != all_gates.end(); it++) {
 		if(strcmp(it->type, "SWP") == 0) {
@@ -673,49 +637,7 @@ int mapper(int argc, char** argv) {
 			last_layer[g.control] = layer;
 		}
 	}
-
-	double time = double(clock() - begin_time) / CLOCKS_PER_SEC;
-
-#if !MINIMAL_OUTPUT
-    std::cout << std::endl << "After mapping (no post mapping optimizations are conducted): " << std::endl;
-	std::cout << "  elementary gates: " << all_gates.size()-total_swaps << std::endl;
-	std::cout << "  depth: " << mapped_circuit.size() << std::endl;
-
-	std::cout << "\nThe mapping required " << time << " seconds" << std::endl;
-
-	std::cout << "\nInitial mapping of the logical qubits (q) to the physical qubits (Q) of the IBM QX5 architecture: " << std::endl;
-
-	for(int i=0; i<nqubits; i++) {
-		std::cout << "  q" << i << " is initially mapped to Q" << locations[i] << std::endl;
-	}
-#else
-    std::cout << time << ',' << (all_gates.size()-total_swaps) << ',' << mapped_circuit.size() << std::endl;
-#endif
-
-#if DUMP_MAPPED_CIRCUIT
-	//Dump resulting circuit
-	std::ofstream of(argv[2]);
-
-	of << "OPENQASM 2.0;" << std::endl;
-	of << "include \"qelib1.inc\";" << std::endl;
-	of << "qreg q[16];" << std::endl;
-	of << "creg c[16];" << std::endl;
-
-	for (std::vector<std::vector<QASMparser::gate> >::iterator it = mapped_circuit.begin();
-			it != mapped_circuit.end(); it++) {
-		std::vector<QASMparser::gate> v = *it;
-		for (std::vector<QASMparser::gate>::iterator it2 = v.begin(); it2 != v.end(); it2++) {
-			of << it2->type << " ";
-			if (it2->control != -1) {
-				of << "q[" << it2->control << "],";
-			}
-			of << "q[" << it2->target << "];" << std::endl;
-		}
-	}
-#endif
-
-	delete[] locations;
-	delete[] qubits;
+	
 	delete[] last_layer;
 
 	return 0;
