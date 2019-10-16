@@ -25,3 +25,15 @@ double get_total_cost(const node& n) {
     return n.cost_fixed;
 #endif
 }
+
+double heuristic_function(const double old_heur, const double new_heur) {
+#if HEURISTIC_ADMISSIBLE
+	return max(old_heur, new_heur);
+#else
+	return old_heur + new_heur;
+#endif
+}
+
+double get_heuristic_cost(const double cost_heur, const node& n, const QASMparser::gate& g) {
+	return heuristic_function(cost_heur, dist[n.locations[g.control]][n.locations[g.target]]);
+}

@@ -136,9 +136,11 @@ struct node_cost_greater {
 };
 
 struct cleanup_node {
-	void operator()(const node& x) {
-		delete[] x.qubits;
-		delete[] x.locations;
+	void operator()(const node& n) {
+		delete[] n.locations;
+		delete[] n.qubits;
+		delete[] n.depths;
+		delete[] n.fidelities;
 	}
 };
 
@@ -181,10 +183,12 @@ bool generate_graph(const string input);
 // cost
 double calculate_heuristic_cost(const dijkstra_node* node);
 double get_total_cost(const node& n);
+double heuristic_function(const double old_heur, const double new_heur);
+double get_heuristic_cost(const double cost_heur, const node& n, const QASMparser::gate& g);
 
 // node_handling
 node create_node();
-node create_node(const node& base, const edge& e);
+node create_node(const node& base, const edge* new_swaps, const int nswaps);
 void update_node(node& n, const circuit_properties& p);
 void add_swap(node& n, const edge& e);
 void check_if_not_done(node& n, const int value);

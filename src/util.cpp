@@ -7,6 +7,38 @@
 #include <climits>
 #include <fstream>
 
+void lookahead(const int next_layer, node& new_node) {
+	if(next_layer != -1) {
+		for (vector<QASMparser::gate>::const_iterator it = layers[next_layer].begin(); it != layers[next_layer].end();
+			it++) {
+            QASMparser::gate g = *it;
+			if (g.control != -1) {
+				if(new_node.locations[g.control] == -1 && new_node.locations[g.target] == -1) {
+					//No additional penalty in heuristics
+				} else if(new_node.locations[g.control] == -1) {
+					int min = 1000;
+					for(int i=0; i< positions; i++) {
+						if(new_node.qubits[i] == -1 && dist[i][new_node.locations[g.target]] < min) {
+							min = dist[i][new_node.locations[g.target]];
+						}
+					}
+					new_node.lookahead_penalty = heuristic_function(new_node.lookahead_penalty, min);
+				} else if(new_node.locations[g.target] == -1) {
+					int min = 1000;
+					for(int i=0; i< positions; i++) {
+						if(new_node.qubits[i] == -1 && dist[new_node.locations[g.control]][i] < min) {
+							min = dist[new_node.locations[g.control]][i];
+						}
+					}
+					new_node.lookahead_penalty = heuristic_function(new_node.lookahead_penalty, min);
+				} else {
+					new_node.lookahead_penalty = get_heuristic_cost(new_node.lookahead_penalty, new_node, g);
+				}
+			}
+		}
+	}
+}
+
 void expand_node(const vector<int>& qubits, unsigned int qubit, edge *swaps, int nswaps,
 				 int* used, node base_node, const vector<QASMparser::gate>& gates, double** dist, int next_layer) {
 
@@ -15,96 +47,30 @@ void expand_node(const vector<int>& qubits, unsigned int qubit, edge *swaps, int
 		if (nswaps == 0) {
 			return;
 		}
-		node new_node;
-
-		new_node.qubits = new int[positions];
-		new_node.locations = new int[nqubits];
-
-		memcpy(new_node.qubits, base_node.qubits, sizeof(int) * positions);
-		memcpy(new_node.locations, base_node.locations, sizeof(int) * nqubits);
-
-		new_node.swaps = vector<vector<edge> >();
-		new_node.nswaps = base_node.nswaps + nswaps;
-		for (vector<vector<edge> >::iterator it2 = base_node.swaps.begin();
-			 it2 != base_node.swaps.end(); it2++) {
-            vector<edge> new_v(*it2);
-			new_node.swaps.push_back(new_v);
-		}
-
-		//new_node.depth = base_node.depth + 5;
-		new_node.cost_fixed = base_node.cost_fixed + 7 * nswaps;
-		new_node.cost_heur = 0;
-
-        vector<edge> new_swaps;
-		for (int i = 0; i < nswaps; i++) {
-			new_swaps.push_back(swaps[i]);
-			int tmp_qubit1 = new_node.qubits[swaps[i].v1];
-			int tmp_qubit2 = new_node.qubits[swaps[i].v2];
-
-			new_node.qubits[swaps[i].v1] = tmp_qubit2;
-			new_node.qubits[swaps[i].v2] = tmp_qubit1;
-
-			if (tmp_qubit1 != -1) {
-				new_node.locations[tmp_qubit1] = swaps[i].v2;
-			}
-			if (tmp_qubit2 != -1) {
-				new_node.locations[tmp_qubit2] = swaps[i].v1;
-			}
-		}
-		new_node.swaps.push_back(new_swaps);
-		new_node.done = 1;
+		node new_node = create_node(base_node, swaps, nswaps);
 
 		for (vector<QASMparser::gate>::const_iterator it = gates.begin(); it != gates.end();
 			 it++) {
 			QASMparser::gate g = *it;
 			if (g.control != -1) {
+				new_node.cost_heur = get_heuristic_cost(new_node.cost_heur, new_node, g);
+				/*
 #if HEUR_ADMISSIBLE
 				new_node.cost_heur = max(new_node.cost_heur, dist[new_node.locations[g.control]][new_node.locations[g.target]]);
 #else
 				new_node.cost_heur = new_node.cost_heur + dist[new_node.locations[g.control]][new_node.locations[g.target]];
 #endif
-				if(dist[new_node.locations[g.control]][new_node.locations[g.target]] > 4) {
+				*/
+				check_if_not_done(new_node, dist[new_node.locations[g.control]][new_node.locations[g.target]]);
+				/*if(dist[new_node.locations[g.control]][new_node.locations[g.target]] > 4) {
 					new_node.done = 0;
-				}
+				}*/
 			}
 		}
 
 		//Calculate heuristics for the cost of the following layer
-		new_node.lookahead_penalty = 0;
 #if LOOK_AHEAD
-		if(next_layer != -1) {
-			for (vector<QASMparser::gate>::const_iterator it = layers[next_layer].begin(); it != layers[next_layer].end();
-							it++) {
-                QASMparser::gate g = *it;
-				if (g.control != -1) {
-					if(new_node.locations[g.control] == -1 && new_node.locations[g.target] == -1) {
-						//No additional penalty in heuristics
-					} else if(new_node.locations[g.control] == -1) {
-						int min = 1000;
-						for(int i=0; i< positions; i++) {
-							if(new_node.qubits[i] == -1 && dist[i][new_node.locations[g.target]] < min) {
-								min = dist[i][new_node.locations[g.target]];
-							}
-						}
-						new_node.lookahead_penalty = new_node.lookahead_penalty + min;
-					} else if(new_node.locations[g.target] == -1) {
-						int min = 1000;
-						for(int i=0; i< positions; i++) {
-							if(new_node.qubits[i] == -1 && dist[new_node.locations[g.control]][i] < min) {
-								min = dist[new_node.locations[g.control]][i];
-							}
-						}
-						new_node.lookahead_penalty = new_node.lookahead_penalty + min;
-					} else {
-#if HEURISTIC_ADMISSIBLE
-						new_node.lookahead_penalty = max(new_node.lookahead_penalty, dist[new_node.locations[g.control]][new_node.locations[g.target]]);
-#else
-						new_node.lookahead_penalty = new_node.lookahead_penalty + dist[new_node.locations[g.control]][new_node.locations[g.target]];
-#endif
-					}
-				}
-			}
-		}
+		lookahead(next_layer, new_node);
 #endif
 
 		nodes.push(new_node);
@@ -131,23 +97,26 @@ void expand_node(const vector<int>& qubits, unsigned int qubit, edge *swaps, int
 	}
 }
 
-node a_star_fixlayer(int layer, int* map, int* loc, double** dist) {
+// maps the qubit to the physical location that is not yet mapped and has minimum distance 
+void map_to_min_distance(int* map, int* loc, const int source, const int target) {
+	int min     = 1000;
+	int min_pos = -1;
+	for(int i = 0; i < positions; i++) {
+		if(map[i] == -1 && dist[loc[source]][i] < min) {
+			min     = dist[loc[source]][i];
+			min_pos = i;
+		}
+	}
+	map[min_pos] = target;
+	loc[target]  = min_pos;
+}
 
-	int next_layer = get_next_layer(layer);
-
-	node n;
-	n.cost_fixed = 0;
-	n.cost_heur = n.lookahead_penalty = 0;
-	n.qubits = new int[positions];
-	n.locations = new int[nqubits];
-	n.swaps = vector<vector<edge> >();
-	n.done = 1;
-
-    vector<QASMparser::gate> v = vector<QASMparser::gate>(layers[layer]);
-    vector<int> considered_qubits;
+void map_unmapped_gates(const int layer, circuit_properties& p, node& n, vector<int>& considered_qubits) {
+	int* map = p.qubits;
+	int* loc = p.locations;
 
 	//Find a mapping for all logical qubits in the CNOTs of the layer that are not yet mapped
-	for (vector<QASMparser::gate>::iterator it = v.begin(); it != v.end(); it++) {
+	for (vector<QASMparser::gate>::iterator it = layers[layer].begin(); it != layers[layer].end(); it++) {
 		QASMparser::gate g = *it;
 		if (g.control != -1) {
 			considered_qubits.push_back(g.control);
@@ -170,6 +139,8 @@ node a_star_fixlayer(int layer, int* map, int* loc, double** dist) {
                     exit(1);
 				}
 			} else if(loc[g.control] == -1) {
+				map_to_min_distance(map, loc, g.target, g.control);
+				/*
 				int min = 1000;
 				int min_pos = -1;
 				for(int i=0; i< positions; i++) {
@@ -180,7 +151,10 @@ node a_star_fixlayer(int layer, int* map, int* loc, double** dist) {
 				}
 				map[min_pos] = g.control;
 				loc[g.control] = min_pos;
+				*/
 			} else if(loc[g.target] == -1) {
+				map_to_min_distance(map, loc, g.control, g.target);
+				/*
 				int min = 1000;
 				int min_pos = -1;
 				for(int i=0; i< positions; i++) {
@@ -191,19 +165,26 @@ node a_star_fixlayer(int layer, int* map, int* loc, double** dist) {
 				}
 				map[min_pos] = g.target;
 				loc[g.target] = min_pos;
+				*/
 			}
 			n.cost_heur = max(n.cost_heur, dist[loc[g.control]][loc[g.target]]);
 		} else {
 			//Nothing to do here
 		}
 	}
+}
 
-	if(n.cost_heur > 4) {
-		n.done = 0;
-	}
+node a_star_fixlayer(const int layer, circuit_properties& properties) {
+	int  next_layer = get_next_layer(layer);
+	node n          = create_node();
+    
+	vector<int>              considered_qubits;
+    vector<QASMparser::gate> v = vector<QASMparser::gate>(layers[layer]);
+	
+	map_unmapped_gates(layer, properties, n, considered_qubits);
 
-    memcpy(n.qubits, map, sizeof(int) * positions);
-    memcpy(n.locations, loc, sizeof(int) * nqubits);
+	check_if_not_done(n, n.cost_heur);
+	update_node(n, properties);
 
 	nodes.push(n);
 
@@ -220,8 +201,7 @@ node a_star_fixlayer(int layer, int* map, int* loc, double** dist) {
 
 		expand_node(considered_qubits, 0, edges, 0, used, n, v, dist, next_layer);
 
-		delete[] n.locations;
-		delete[] n.qubits;
+		delete_node(n);
 	}
 
 	node result = nodes.top();
@@ -230,12 +210,9 @@ node a_star_fixlayer(int layer, int* map, int* loc, double** dist) {
 	//clean up
 	delete[] used;
 	delete[] edges;
-	while (!nodes.empty()) {
-		node n = nodes.top();
-		nodes.pop();
-		delete[] n.locations;
-		delete[] n.qubits;
-	}
+
+
+	delete_nodes();
 	return result;
 }
 
@@ -351,7 +328,7 @@ void mapping(const vector<QASMparser::gate>& gates, vector<vector<QASMparser::ga
 
 	//Fix the mapping of each layer
 	for (unsigned int i = 0; i < layers.size(); i++) {
-		node result = a_star_fixlayer(i, qubits, locations, dist);
+		node result = a_star_fixlayer(i, properties);
 
 		adapt_circuit_properties(properties, result);	
 	    qubits    = properties.qubits;

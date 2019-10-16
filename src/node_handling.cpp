@@ -55,7 +55,7 @@ void apply_edge(const node& n, const edge e) {
 /**
  * Creates a node based on a base node
  */
-node create_node(const node& base, const SWAP_TYPE& new_swaps, const int nswaps) {
+node create_node(const node& base, const edge* new_swaps, const int nswaps) {
     node n = create_node(base.cost_fixed + COST_SWAP * nswaps, base.nswaps + nswaps, base.swaps);
     
 	memcpy(n.qubits,     base.qubits,     sizeof(int) * positions);
@@ -63,11 +63,12 @@ node create_node(const node& base, const SWAP_TYPE& new_swaps, const int nswaps)
 	memcpy(n.depths,     base.depths,     sizeof(int) * positions);
     memcpy(n.fidelities, base.fidelities, sizeof(int) * positions);
 
+
     SWAP_TYPE n_swaps;
 
-	for (vector<edge>::const_iterator it = new_swaps.begin(); it != new_swaps.end(); it++) {
-		apply_edge(n, *it);
-        n_swaps.push_back(*it);
+	for (int i = 0; i < nswaps; i++) {
+		apply_edge(n, new_swaps[i]);
+        n_swaps.push_back(new_swaps[i]);
 	}
     
     n.swaps.push_back(n_swaps);
@@ -131,10 +132,13 @@ void check_if_not_done(node& n, const int value) {
  * Deletes a node
  */
 void delete_node(const node& n) {
-	delete[] n.locations;
+	/*
+    delete[] n.locations;
 	delete[] n.qubits;
 	delete[] n.depths;
 	delete[] n.fidelities;
+    */
+   cleanup_node()(n);
 }
 
 /**
@@ -142,17 +146,14 @@ void delete_node(const node& n) {
  */
 void delete_nodes() {
 	//clean up
+    /*
 	vector<node> &v = nodes.get_container();
 	for(vector<node>::const_iterator it = v.begin(); it != v.end();
 		 it++) {
 		delete_node(*it);
 	}
 	nodes = unique_priority_queue<node, cleanup_node, node_cost_greater, node_func_less>();
-	/*
-	while (!nodes.empty()) {
-		node n = nodes.top();
-		nodes.pop();
-		delete_node(n);
-	}
 	*/
+    nodes.delete_queue();
+    nodes = unique_priority_queue<node, cleanup_node, node_cost_greater, node_func_less>();
 }
