@@ -24,13 +24,12 @@ void adapt_circuit_properties(circuit_properties& p, const node& n) {
 	delete_circuit_properties(p);
 	p.locations  = n.locations;
 	p.qubits     = n.qubits;
-	//p.depths     = n.depths;
-	//p.fidelities = n.fidelities;
+	p.depths     = n.depths;
+	p.fidelities = n.fidelities;
 }
 
-/*
 // adapts the properties of the current qubits
-void update_properties(const int layer, circuit_properties& p) {
+void update_properties(circuit_properties& p, const int layer) {
 	for(vector<QASMparser::gate>::iterator it = layers[layer].begin(); it != layers[layer].end(); it++) {
 	    QASMparser::gate g = *it;
 		int pt = p.locations[g.target];
@@ -51,16 +50,20 @@ void update_properties(const int layer, circuit_properties& p) {
 				p.fidelities[pt] += FIDELITY_GATE << 1;
 				p.fidelities[pc] += FIDELITY_GATE << 1; // * 2
 			}
+#if USE_INITIAL_MAPPING
 		} else {
+#else
+		} else if(pt >= 0) {
+#endif
 			p.depths[pt]     += DEPTH_GATE;
         	p.fidelities[pt] += FIDELITY_GATE;
 		}
 	}
 }
-*/
+
 void delete_circuit_properties(circuit_properties& p) {
     delete[] p.locations;
 	delete[] p.qubits;	
-	//delete[] p.depths;	
-	//delete[] p.fidelities;
+	delete[] p.depths;	
+	delete[] p.fidelities;
 }

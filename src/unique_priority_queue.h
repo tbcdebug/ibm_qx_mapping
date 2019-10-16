@@ -5,12 +5,16 @@
 #ifndef UNIQUE_PRIORITY_QUEUE_H
 #define UNIQUE_PRIORITY_QUEUE_H
 
+using namespace std;
+
+#define UNUSED(x) ((void)x)
+
 const int    MAX_QUEUE_SIZE               = 6000000;
 const int    MAX_NODES_MARGIN             = 500000;
 const int    MAX_QUEUE_COPY_LENGTH        = 1000000;
 const double QUEUE_COPY_LENGTH_PERCENTAGE = 1/((double)6);
 
-#define UNUSED(x) ((void)x)
+
 
 template<class T>
 struct do_nothing {
@@ -19,8 +23,8 @@ struct do_nothing {
     }
 };
 
-template<class T, class Container = std::vector<T>, class Compare = std::less<typename Container::value_type>>
-class own_priority_queue : public std::priority_queue<T, Container, Compare> {
+template<class T, class Container = vector<T>, class Compare = less<typename Container::value_type>>
+class own_priority_queue : public priority_queue<T, Container, Compare> {
 	public:
 		Container& get_container() {
             return this->c;
@@ -31,11 +35,11 @@ class own_priority_queue : public std::priority_queue<T, Container, Compare> {
  * Priority queue with unique (according to FuncCompare) elements of type T where the sorting is based on CostCompare.
  * If NDEBUG is *not* defined, there are some assertions that help catching errors in the provided comparision functions.
  */
-template<class T, class CleanObsoleteElement = do_nothing<T>, class CostCompare = std::less<T>, class FuncCompare = CostCompare>
+template<class T, class CleanObsoleteElement = do_nothing<T>, class CostCompare = less<T>, class FuncCompare = CostCompare>
 class unique_priority_queue
 {
 public:
-    typedef typename own_priority_queue<T, std::vector<T>, CostCompare>::size_type size_type;
+    typedef typename own_priority_queue<T, vector<T>, CostCompare>::size_type size_type;
 
     /**
      * Return true if the element was inserted into the queue.
@@ -53,16 +57,19 @@ public:
         {
             const auto number_erased = membership_.erase(*(insertion_pair.first));
             assert(number_erased == 1); UNUSED(number_erased);
+
             CleanObsoleteElement()(*(insertion_pair.first));
+            
             const auto inserted = membership_.insert(v);
             assert(inserted.second); UNUSED(inserted);
-            queue_ = own_priority_queue<T, std::vector<T>, CostCompare>();
+            
+            queue_ = own_priority_queue<T, vector<T>, CostCompare>();
             for(const auto& element : membership_) {
                 queue_.push(element);
             }
             assert(queue_.size() == membership_.size());
+            
             return true;
-
         }
         assert(queue_.size() == membership_.size());
         return insertion_pair.second;
@@ -72,8 +79,8 @@ public:
     {
         assert(!queue_.empty() && queue_.size() == membership_.size());
 
-        const auto& top_element = queue_.top();
-        const auto number_erased = membership_.erase(top_element);
+        const auto& top_element   = queue_.top();
+        const auto  number_erased = membership_.erase(top_element);
 
         assert(number_erased == 1); UNUSED(number_erased);
 
@@ -98,15 +105,15 @@ public:
         return queue_.size();
     }
 
-    std::vector<T>& get_container() 
+    vector<T>& get_container() 
     {
         return queue_.get_container();
     }
 
     void delete_queue() 
     {
-        std::vector<T> &v = get_container();
-        for(typename std::vector<T>::const_iterator it = v.begin(); it != v.end();
+        vector<T> &v = get_container();
+        for(typename vector<T>::const_iterator it = v.begin(); it != v.end();
             it++) {
             CleanObsoleteElement()(*it);
         }
@@ -116,7 +123,7 @@ public:
     void update() 
     {	
         T temp_queue[MAX_QUEUE_SIZE];
-        unsigned int length = std::min((int)(queue_.size() * QUEUE_COPY_LENGTH_PERCENTAGE), MAX_QUEUE_COPY_LENGTH);
+        unsigned int length = min((int)(queue_.size() * QUEUE_COPY_LENGTH_PERCENTAGE), MAX_QUEUE_COPY_LENGTH);
         
         for(unsigned int i = 0; i < length; i++) {
             temp_queue[i] = queue_.top();
@@ -129,7 +136,7 @@ public:
             queue_.push(temp_queue[i]);		
         }
         
-        std::cout << "RESULTING SIZE: " << queue_.size() << std::endl;
+        cout << "RESULTING SIZE: " << queue_.size() << endl;
     }
 
     void restart(T& n) 
@@ -138,8 +145,8 @@ public:
         queue_.push(n);
     }
 private:
-    own_priority_queue<T, std::vector<T>, CostCompare> queue_;
-    std::set<T, FuncCompare> membership_;
-    unsigned int last_node_copied = 0;
+    own_priority_queue<T, vector<T>, CostCompare> queue_;
+    set<T, FuncCompare>                           membership_;
+    unsigned int                                  last_node_copied = 0;
 };
 #endif

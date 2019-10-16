@@ -54,43 +54,6 @@ unsigned int get_next_layer(const unsigned int layer) {
 	return -1;
 }
 
-/*
-void map_unmapped_gates(const int layer, circuit_properties& p, node& n, vector<int>& considered_qubits) {
-	int* loc = p.locations;
-	int* map = p.qubits;
-	
-	for (vector<QASMparser::gate>::iterator it = layers[layer].begin(); it != layers[layer].end(); it++) {
-		QASMparser::gate g = *it;
-		if (g.control != -1) {
-			considered_qubits.push_back(g.control);
-			considered_qubits.push_back(g.target);
-			if(loc[g.control] == -1 && loc[g.target] == -1) { //TODO better mapping
-				set<edge> possible_edges;
-				for(set<edge>::iterator it = graph.begin(); it != graph.end(); it++) {
-					if(map[it->v1] == -1 && map[it->v2] == -1) {
-						possible_edges.insert(*it);
-					}
-				}
-				if(!possible_edges.empty()) {
-					edge e         = *possible_edges.begin();
-					loc[g.control] = e.v1;
-					map[e.v1]      = g.control;
-					loc[g.target]  = e.v2;
-					map[e.v2]      = g.target;
-				} else {
-					cerr << "no edge available!";
-					exit(1);
-				}
-			} else if(loc[g.control] == -1) { //DONE min function
-				map_to_min_distance(map, loc, g.target, g.control);
-			} else if(loc[g.target] == -1) {
-				map_to_min_distance(map, loc, g.control, g.target);
-			}
-			n.cost_heur = max(n.cost_heur, dist[loc[g.control]][loc[g.target]]);
-		}
-	}
-}
-*/
 // calculates the width of the layer
 unsigned int calculate_max_layer_width() {
     unsigned int width = 0;

@@ -1,5 +1,6 @@
 #include "mapper.hpp"
 
+// used to calculate the heuristic cost for a certain dijkstra node based on the path length
 double calculate_heuristic_cost(const dijkstra_node* node) {
 	int path_length = node->length - 1;
 	if(node->contains_correct_edge) {
@@ -16,6 +17,7 @@ double calculate_heuristic_cost(const dijkstra_node* node) {
 #endif
 }
 
+// calculates the total cost of all factors that are enabled
 double get_total_cost(const node& n) {
 #if SPECIAL_OPT
 	return (fidelity_cost(n.fidelities)                       * FIDELITY_NORM)    + 
@@ -26,6 +28,7 @@ double get_total_cost(const node& n) {
 #endif
 }
 
+// combines the heuristic values of the old value and the new value
 double heuristic_function(const double old_heur, const double new_heur) {
 #if HEURISTIC_ADMISSIBLE
 	return max(old_heur, new_heur);
@@ -34,6 +37,7 @@ double heuristic_function(const double old_heur, const double new_heur) {
 #endif
 }
 
+// returns the heuristic cost for a certain node and considering the current cost
 double get_heuristic_cost(const double cost_heur, const node& n, const QASMparser::gate& g) {
 	return heuristic_function(cost_heur, dist[n.locations[g.control]][n.locations[g.target]]);
 }

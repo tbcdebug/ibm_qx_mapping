@@ -9,6 +9,54 @@ static void build_graph_NN(int nqubits)               UNUSED_FUNCTION;
 static void build_graph_QX5()                         UNUSED_FUNCTION;
 
 
+
+// generate graph from the file, if the file is empty a graph according to ARCH is generated
+bool generate_graph(const string input) {
+    if(input.empty()) {
+#if ARCH == ARCH_LINEAR_N
+		build_graph_linear(nqubits);
+#elif ARCH == ARCH_LINEAR_NN
+		build_graph_NN(nqubits):
+#elif ARCH == ARCH_IBM_QX5
+		build_graph_QX5();
+#else
+    	static_assert(false, "No architecture specified!");
+#endif
+    } else {
+        graph.clear();
+		ifstream infile(input, ifstream::in);
+		if(infile.fail()) {
+			cerr << "Failed to open file '" << input << "'!" << endl;
+			return false;
+		} else {
+			string line;
+			if(getline(infile, line)) {
+				sscanf(line.c_str(), "Positions: %d", &positions);
+				cout << "Positions: " << positions << endl;
+			} else {
+				cout << "First Line has to be: Positions: [0-9]*" << endl;
+				return false;
+			}
+			while (getline(infile, line)) {
+				int e1, e2;
+				edge e;
+				if (sscanf(line.c_str(), "[%d,%d]", &e1, &e2) == 2) {
+					//cout << "Edge: " << e1 << "  " << e2 << "  detected." << endl;
+					e.v1 = e1;
+					e.v2 = e2;
+					graph.insert(e);
+				}
+			}
+			infile.close();
+		}	
+		cout << "Finished reading of the coupling graph" << endl;
+    }
+
+    build_dist_table(graph);
+	cout << "Finished building of the dist table" << endl;
+	return true;
+}
+
 static void set_dijkstra_node(dijkstra_node* nodes, priority_queue<dijkstra_node*, vector<dijkstra_node*>, dijkstra_node_cmp>& queue,
 					          const int parent, const int pos, const bool contains_correct_edge) {
 	if(nodes[pos].length < 0) {
@@ -75,53 +123,6 @@ static void build_dist_table(const set<edge>& graph) {
 
 		delete[] nodes;
 	}
-}
-
-// generate graph from the file, if the file is empty a QX5 graph is generated
-bool generate_graph(const string input) {
-    if(input.empty()) {
-#if ARCH == ARCH_LINEAR_N
-		build_graph_linear(nqubits);
-#elif ARCH == ARCH_LINEAR_NN
-		build_graph_NN(nqubits):
-#elif ARCH == ARCH_IBM_QX5
-		build_graph_QX5();
-#else
-    	static_assert(false, "No architecture specified!");
-#endif
-    } else {
-        graph.clear();
-		ifstream infile(input, ifstream::in);
-		if(infile.fail()) {
-			cerr << "Failed to open file '" << input << "'!" << endl;
-			return false;
-		} else {
-			string line;
-			if(getline(infile, line)) {
-				sscanf(line.c_str(), "Positions: %d", &positions);
-				cout << "Positions: " << positions << endl;
-			} else {
-				cout << "First Line has to be: Positions: [0-9]*" << endl;
-				return false;
-			}
-			while (getline(infile, line)) {
-				int e1, e2;
-				edge e;
-				if (sscanf(line.c_str(), "[%d,%d]", &e1, &e2) == 2) {
-					//cout << "Edge: " << e1 << "  " << e2 << "  detected." << endl;
-					e.v1 = e1;
-					e.v2 = e2;
-					graph.insert(e);
-				}
-			}
-			infile.close();
-		}	
-		cout << "Finished reading of the coupling graph" << endl;
-    }
-
-    build_dist_table(graph);
-	cout << "Finished building of the dist table" << endl;
-	return true;
 }
 
 //build a graph representing the coupling map of nearest neighbor
@@ -208,6 +209,7 @@ static void build_graph_QX5() {
 	graph.insert(e);
 }
 
+//build a graph representing the coupling map of a NN architecture
 static void build_graph_NN(int nqubits) {
 	build_graph_linear(nqubits);
 	positions = 16;

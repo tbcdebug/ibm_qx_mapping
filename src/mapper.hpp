@@ -21,8 +21,8 @@ using namespace std;
 #define SUCCESS 0
 #define ERROR   1
 
-#define ARCH_LINEAR_N 0
-#define ARCH_IBM_QX5 1
+#define ARCH_LINEAR_N  0
+#define ARCH_IBM_QX5   1
 #define ARCH_LINEAR_NN 2
 
 #define UNUSED_FUNCTION __attribute__ ((unused))
@@ -30,7 +30,6 @@ using namespace std;
 /**
  * Control Defines
  */
-
 #define LOOK_AHEAD           1
 #define HEURISTIC_ADMISSIBLE 0
 #define USE_INITIAL_MAPPING  0
@@ -58,18 +57,17 @@ const int DEPTH_GATE    = 1;
 const int DEPTH_SWAP    = 5 * DEPTH_GATE;
 
 
-
-
-
+/** 
+ * Global variables - standard
+ */
 extern double**      dist;
 extern int           positions;
 extern unsigned long ngates;
 extern unsigned int  nqubits;
 
 /**
- * Types and structs
+ * Types 
  */
-
 struct edge {
 	int v1;
 	int v2;
@@ -173,10 +171,17 @@ struct dijkstra_node_cmp {
 	}
 };
 
-extern set<edge> graph;
-extern vector<vector<QASMparser::gate> > layers;
+/** 
+ * Global variables - special types
+ */
+extern set<edge>                                                                    graph;
+extern vector<vector<QASMparser::gate>>                                             layers;
 extern unique_priority_queue<node, cleanup_node, node_cost_greater, node_func_less> nodes;
 
+
+/**
+ * Functions
+ */
 // coupling_graph
 bool generate_graph(const string input);
 
@@ -190,24 +195,30 @@ double get_heuristic_cost(const double cost_heur, const node& n, const QASMparse
 node create_node();
 node create_node(const node& base, const edge* new_swaps, const int nswaps);
 void update_node(node& n, const circuit_properties& p);
-void add_swap(node& n, const edge& e);
 void check_if_not_done(node& n, const int value);
 void delete_node(const node& n);
 void delete_nodes(); 
 
 // layer_handling
 vector<vector<QASMparser::gate>> init_layers(const vector<QASMparser::gate> &gates);
-unsigned int get_next_layer(const unsigned int layer);
-unsigned int calculate_max_layer_width();
+unsigned int                     get_next_layer(const unsigned int layer);
+unsigned int                     calculate_max_layer_width();
 
 // circuit_property_handling
 circuit_properties create_circuit_properties();
 void               delete_circuit_properties(circuit_properties& p);
 void               adapt_circuit_properties(circuit_properties& p, const node& n);
-void 			   update_properties(const int layer, circuit_properties& p);
+void 			   update_properties(circuit_properties& p, const int layer);
 
-
+// mapping.cpp
 void mapping(const vector<QASMparser::gate>& gates, vector<vector<QASMparser::gate>>& mapped_circuit, 
 			vector<QASMparser::gate>& all_gates, int &total_swaps, circuit_properties& properties);
+
+// util.cpp
+void initial_mapping(circuit_properties& properties);
+void map_to_min_distance(int* map, int* loc, const int source, const int target);
+void map_unmapped_gates(const int layer, circuit_properties& p, node& n, vector<int>& considered_qubits);
+void fix_positions_of_single_qubit_gates(int* locations, int* qubits, vector<QASMparser::gate>& all_gates);
+void generate_circuit(vector<vector<QASMparser::gate>>& mapped_circuit, const vector<QASMparser::gate>& all_gates);
 
 #endif /* MAPPER_H_ */

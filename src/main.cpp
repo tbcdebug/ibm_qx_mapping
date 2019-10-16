@@ -10,7 +10,7 @@ namespace po = boost::program_options;
  */
 double**       dist;
 int            positions;
-unsigned long  ngates = 0;
+unsigned long  ngates  = 0;
 unsigned int   nqubits = 0;
 
 set<edge>                                                                    graph;
@@ -26,44 +26,26 @@ int main(int argc, char** argv) {
 	try {
 		po::options_description desc{"Options"};
     	desc.add_options()
-			("help,h",                               "help screen")
-			("input,i",         po::value<string>(), "input file")
-			("output,o",        po::value<string>(), "output file")
-			("statistic,s",     po::value<string>(), "output statistics file")
-			("coupling_file,c", po::value<string>(), "coupling graph - file")
-			("verbose,v",                            "verbose");
+			("help,h",                                                   "help screen")
+			("input,i",         po::value<string>(&input)->required(),   "input file")
+			("output,o",        po::value<string>(&output),              "output file")
+			("statistic,s",     po::value<string>(&output_statistics),   "output statistics file")
+			("coupling_file,c", po::value<string>(&input_coupling),      "coupling graph - file")
+			("verbose,v",       po::bool_switch(&verbose),               "verbose");
 
 		po::positional_options_description p;
-		p.add("input", -1);
+		p.add("input",     1);
+		p.add("statistic", 1);
 
 		po::variables_map vm; 
 		po::store(po::command_line_parser(argc, argv).
 			options(desc).positional(p).run(), vm);
+		
+		if (vm.count("help")) {
+        	cout << desc << endl;
+            return 0;
+        }
 		po::notify(vm);
-
-		if(vm.count("help")) {
-			cout << desc << endl;
-			exit(SUCCESS);
-		}
-		if(vm.count("input")) {
-			input = vm["input"].as<string>();
-		} else {			
-			cerr << "Input has to be specified." << endl;
-			exit(ERROR);
-		}
-		if(vm.count("output")) {
-			output = vm["output"].as<string>();
-		}
-		if(vm.count("statistic")) {
-			output_statistics = vm["statistic"].as<string>();
-		}
-		if(vm.count("coupling_file")) {
-			input_coupling = vm["coupling_file"].as<string>();
-		}
-		if(vm.count("verbose")) {
-			verbose = true;
-		}
-
 	} catch (const po::error &ex) {
 		cerr << ex.what() << endl;
 		exit(ERROR);
@@ -104,10 +86,10 @@ int main(int argc, char** argv) {
 	const char* bName = basename(input.c_str());
 	if(verbose) {
 		cout << "Circuit name: " << bName << " (requires " << nqubits << " qubits)" << endl;
-
-		cout << endl << "Before mapping: " << endl;
-		cout << "  elementary gates: " << ngates << endl;
-		cout << "  depth: " << layers.size() << endl;
+		cout << endl;
+		cout << "Before mapping: "                      << endl;
+		cout << "  elementary gates: " << ngates        << endl;
+		cout << "  depth:            " << layers.size() << endl;
 	} else {
     	cout << bName << ',' << nqubits << ',' << ngates << ',' << layers.size() << ',' << flush;
 	}
@@ -122,13 +104,16 @@ int main(int argc, char** argv) {
 
 	mapping(gates, mapped_circuit, all_gates, total_swaps, properties);
 
-	double time = double(clock() - begin_time) / CLOCKS_PER_SEC;
+	double    time     = double(clock() - begin_time) / CLOCKS_PER_SEC;
+	int       depth    = mapped_circuit.size();
+	int       cost     = all_gates.size()-total_swaps;
+	long long fidelity = 0;//fidelity_cost(properties.fidelities);
 	
 	// print statistics
 	if(verbose) {
 		cout << endl << "After mapping (no post mapping optimizations are conducted): " << endl;
-		cout << "  elementary gates: " << all_gates.size()-total_swaps << endl;
-		cout << "  depth: " << mapped_circuit.size() << endl;
+		cout << "  elementary gates: " << cost  << endl;
+		cout << "  depth:            " << depth << endl;
 
 		cout << "\nThe mapping required " << time << " seconds" << endl;
 
@@ -138,7 +123,7 @@ int main(int argc, char** argv) {
 			cout << "  q" << i << " is initially mapped to Q" << properties.locations[i] << endl;
 		} 
 	} else {
-    	cout << time << ',' << (all_gates.size()-total_swaps) << ',' << mapped_circuit.size() << endl;
+    	cout << time << ',' << cost << ',' << depth << endl;
 	}
 
 	if(!output.empty()) {
@@ -161,6 +146,13 @@ int main(int argc, char** argv) {
 				of << "q[" << it2->target << "];" << endl;
 			}
 		}
+	}
+
+	// store timing
+	if(!output_statistics.empty()) {
+		ofstream ofstat (output_statistics, ofstream::app);
+		//ofstat << bName << " : " << time << " " << depth << " " << cost << " " << fidelity << " " << alloc_tries << " " << total_swaps << endl;
+		ofstat << bName << " : " << time << " " << depth << " " << cost << " " << fidelity << " " << total_swaps << endl;
 	}
 
 	delete_circuit_properties(properties);
