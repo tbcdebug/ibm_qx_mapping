@@ -157,8 +157,8 @@ struct node_cost_greater {
 
 struct cleanup_node {
 	void operator()(const node& n) {
-		delete[] n.locations;
 		delete[] n.qubits;
+		delete[] n.locations;
 #if SPECIAL_OPT
 		delete[] n.depths;
 		delete[] n.fidelities;
@@ -225,7 +225,6 @@ node create_node(const node& base, const edge* new_swaps, const int nswaps = 1);
 void update_node(node& n, const circuit_properties& p);
 void check_if_not_done(node& n, const int value);
 void delete_node(const node& n);
-void delete_nodes(); 
 
 // layer_handling
 vector<vector<QASMparser::gate>> init_layers(const vector<QASMparser::gate> &gates);

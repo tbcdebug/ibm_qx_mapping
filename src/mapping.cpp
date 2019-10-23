@@ -139,7 +139,7 @@ static void expand_node_add_one_swap(const vector<int>& qubits, const edge e, no
 #if LOOK_AHEAD
 	lookahead(next_layer, new_node);
 #endif
-	nodes.push(new_node);		
+	nodes.push_delete_if_existing(new_node);		
 }
 
 /**
@@ -205,7 +205,7 @@ static void expand_node(const vector<int>& qubits, unsigned int qubit, edge *swa
 		lookahead(next_layer, new_node);
 #endif
 
-		nodes.push(new_node);
+		nodes.push_delete_if_existing(new_node);
 	} else {
 		expand_node(qubits, qubit + 1, swaps, nswaps, used, base_node, gates, next_layer);
 
@@ -312,13 +312,11 @@ node a_star_fixlayer(const int layer, circuit_properties& properties) {
 	delete[] edges;
 #endif
 
-
-
 	node result = nodes.top();
 	nodes.pop();
 
 
-	delete_nodes();
+	nodes.delete_queue();
 	return result;
 }
 
@@ -343,7 +341,7 @@ void mapping(const vector<QASMparser::gate>& gates, vector<vector<QASMparser::ga
 
 		adapt_circuit_properties(properties, result);	
 		update_properties(properties, i);
-		
+
 	    qubits    = properties.qubits;
 	    locations = properties.locations;
 

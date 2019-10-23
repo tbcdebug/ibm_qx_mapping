@@ -124,13 +124,5 @@ void check_if_not_done(node& n, const int value) {
  * deletes a node
  */
 void delete_node(const node& n) {
-   cleanup_node()(n);
-}
-
-/**
- * deletes all nodes
- */
-void delete_nodes() {
-    nodes.delete_queue();
-    nodes = unique_priority_queue<node, cleanup_node, node_cost_greater, node_func_less>();
+	cleanup_node()(n);	
 }

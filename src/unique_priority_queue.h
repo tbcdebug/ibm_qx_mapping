@@ -55,11 +55,11 @@ public:
         }
         else if (CostCompare()(*(insertion_pair.first), v))
         {
+
             const auto number_erased = membership_.erase(*(insertion_pair.first));
             assert(number_erased == 1); UNUSED(number_erased);
-
-            CleanObsoleteElement()(*(insertion_pair.first));
             
+            CleanObsoleteElement()(*(insertion_pair.first));
             const auto inserted = membership_.insert(v);
             assert(inserted.second); UNUSED(inserted);
             
@@ -73,6 +73,14 @@ public:
         }
         assert(queue_.size() == membership_.size());
         return insertion_pair.second;
+    }
+
+    bool push_delete_if_existing(const T& v) {
+        bool success = push(v);
+        if(!success) {
+            CleanObsoleteElement()(v);
+        }
+        return success;
     }
 
     void pop()
@@ -117,6 +125,8 @@ public:
             it++) {
             CleanObsoleteElement()(*it);
         }
+        queue_      = own_priority_queue<T, vector<T>, CostCompare>();
+        membership_ = set<T, FuncCompare>();
     }
 
     // clears the queue until a certain length is reached
@@ -142,8 +152,7 @@ public:
     void restart(T& n) 
     {
         delete_queue();
-        queue_ = own_priority_queue<T, vector<T>, CostCompare>();
-        queue_.push(n);
+        push(n);
     }
 private:
     own_priority_queue<T, vector<T>, CostCompare> queue_;

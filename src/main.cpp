@@ -159,4 +159,35 @@ int main(int argc, char** argv) {
 	}
 
 	delete_circuit_properties(properties);
+	
+	
+	/*
+	positions = 16;
+	nqubits   = 16;
+	
+	for(int i = 0; i < 1000; i++) {
+		node n = create_node();
+		//Initially, no physical qubit is occupied
+	for (int j = 0; j < positions; j++) {
+		n.qubits[j] = i;
+	}
+
+	//Initially, no logical qubit is mapped to a physical one
+	for(unsigned j = 0; j < nqubits; j++) {
+		n.locations[j] = -1;
+	}
+		nodes.push(n);
+	}
+	delete_nodes();
+    //nodes = unique_priority_queue<node, cleanup_node, node_cost_greater, node_func_less>();
+	
+	node n = create_node();
+	delete_node(n);
+	n = create_node();
+	
+	delete_node(n);
+	n = create_node();
+	delete_node(n);
+	*/
+	return 0;
 }
