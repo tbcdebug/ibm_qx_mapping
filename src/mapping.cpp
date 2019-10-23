@@ -13,7 +13,7 @@ static void expand_node_add_one_swap(const vector<int>& qubits, const edge e, no
 static void expand_node(const vector<int>& qubits, const node base_node, const vector<QASMparser::gate>& gates, const int next_layer);
 #else
 static void expand_node(const vector<int>& qubits, unsigned int qubit, edge *swaps, int nswaps,
-				 int* used, node base_node, const vector<QASMparser::gate>& gates, int next_layer);
+				 int* used, const node base_node, const vector<QASMparser::gate>& gates, int next_layer);
 #endif
 
 /**
@@ -138,15 +138,15 @@ static void expand_node_add_one_swap(const vector<int>& qubits, const edge e, no
 	}
 #if LOOK_AHEAD
 	lookahead(next_layer, new_node);
-#endif
-	nodes.push_delete_if_existing(new_node);		
+#endif	
+	nodes.push(new_node);
 }
 
 /**
  * adds all possible swaps to the current node considering the specified qubits
  */
 static void expand_node(const vector<int>& qubits, const node base_node, const vector<QASMparser::gate>& gates, const int next_layer) {
-	int **used_swaps;
+	int **used_swaps;  //TODO probably not necessary because of the unique priority queue
 	used_swaps = new int*[nqubits];
 	for(unsigned int i = 0; i < nqubits; i++) {
 		used_swaps[i] = new int[nqubits]();
@@ -182,7 +182,7 @@ static void expand_node(const vector<int>& qubits, const node base_node, const v
  * adds swaps considering all permutations and the specified qubitss
  */
 static void expand_node(const vector<int>& qubits, unsigned int qubit, edge *swaps, int nswaps,
-				 int* used, node base_node, const vector<QASMparser::gate>& gates, int next_layer) {
+				 int* used, const node base_node, const vector<QASMparser::gate>& gates, int next_layer) {
 
 	if (qubit == qubits.size()) {
 		//base case: insert node into queue
@@ -205,7 +205,7 @@ static void expand_node(const vector<int>& qubits, unsigned int qubit, edge *swa
 		lookahead(next_layer, new_node);
 #endif
 
-		nodes.push_delete_if_existing(new_node);
+		nodes.push(new_node);
 	} else {
 		expand_node(qubits, qubit + 1, swaps, nswaps, used, base_node, gates, next_layer);
 
@@ -262,14 +262,17 @@ node a_star_fixlayer(const int layer, circuit_properties& properties) {
 				nodes.update();
 			}
 			expand_node(considered_qubits, n, gates, next_layer);
-		} catch (std::bad_alloc &e) {
+		} catch (bad_alloc &e) {
 			cout << "bad_alloc catched" << endl;
 			try {
 				max_node_size = nodes.size() - MAX_NODES_MARGIN;
 				nodes.update();				
-			} catch (std::bad_alloc &e) {
+			} catch (bad_alloc &e) {
 				cerr << endl;
 				cerr << "bad_alloc while reseting queue -> reset to layer begin" << endl;
+				orig = create_node();
+				map_unmapped_gates(layer, properties, orig, considered_qubits);
+				update_node(orig, properties);
 				nodes.restart(orig);
 			}
 		}
@@ -288,19 +291,23 @@ node a_star_fixlayer(const int layer, circuit_properties& properties) {
 		nodes.pop();
 
 		//expand_node(considered_qubits, 0, edges, 0, used, n, gates, next_layer);
+		
 		try {
 			if(max_node_size != 0 && nodes.size() > max_node_size) {
 				nodes.update();
 			}
 			expand_node(considered_qubits, 0, edges, 0, used, n, gates, next_layer);
-		} catch (std::bad_alloc &e) {
+		} catch (bad_alloc &e) {
 			cout << "bad_alloc catched" << endl;
 			try {
 				max_node_size = nodes.size() - MAX_NODES_MARGIN;
 				nodes.update();				
-			} catch (std::bad_alloc &e) {
+			} catch (bad_alloc &e) {
 				cerr << endl;
 				cerr << "bad_alloc while reseting queue -> reset to layer begin" << endl;
+				orig = create_node();
+				map_unmapped_gates(layer, properties, orig, considered_qubits);
+				update_node(orig, properties);
 				nodes.restart(orig);
 			}
 		}

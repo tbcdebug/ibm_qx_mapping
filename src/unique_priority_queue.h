@@ -55,11 +55,9 @@ public:
         }
         else if (CostCompare()(*(insertion_pair.first), v))
         {
-
-            const auto number_erased = membership_.erase(*(insertion_pair.first));
-            assert(number_erased == 1); UNUSED(number_erased);
-            
             CleanObsoleteElement()(*(insertion_pair.first));
+            membership_.erase(insertion_pair.first);
+       
             const auto inserted = membership_.insert(v);
             assert(inserted.second); UNUSED(inserted);
             
@@ -71,16 +69,12 @@ public:
             
             return true;
         }
-        assert(queue_.size() == membership_.size());
-        return insertion_pair.second;
-    }
-
-    bool push_delete_if_existing(const T& v) {
-        bool success = push(v);
-        if(!success) {
+        else 
+        {
             CleanObsoleteElement()(v);
         }
-        return success;
+        assert(queue_.size() == membership_.size());
+        return insertion_pair.second;
     }
 
     void pop()
