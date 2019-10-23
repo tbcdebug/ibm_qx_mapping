@@ -2,6 +2,9 @@
 
 #include <string.h>
 
+/**
+ * maps all qubits to locations
+ */
 void initial_mapping(circuit_properties& properties) {
 	int* qubits    = properties.qubits;
 	int* locations = properties.locations;
@@ -32,7 +35,9 @@ void initial_mapping(circuit_properties& properties) {
 	}
 }
 
-// maps the qubit to the physical location that is not yet mapped and has minimum distance 
+/**
+ * maps the qubit to the physical location that is not yet mapped and has minimum distance
+ */
 void map_to_min_distance(int* map, int* loc, const int source, const int target) {
 	int min     = 1000;
 	int min_pos = -1;
@@ -46,6 +51,9 @@ void map_to_min_distance(int* map, int* loc, const int source, const int target)
 	loc[target]  = min_pos;
 }
 
+/**
+ * maps the unmapped gates
+ */
 void map_unmapped_gates(const int layer, circuit_properties& p, node& n, vector<int>& considered_qubits) {
 	int* map = p.qubits;
 	int* loc = p.locations;
@@ -84,7 +92,9 @@ void map_unmapped_gates(const int layer, circuit_properties& p, node& n, vector<
 	}
 }
 
-// fix the position of the single qubit gates
+/**
+ * fix the position of the single qubit gates
+ */
 void fix_positions_of_single_qubit_gates(int* locations, int* qubits, vector<QASMparser::gate>& all_gates) {
 	for(vector<QASMparser::gate>::reverse_iterator it = all_gates.rbegin(); it != all_gates.rend(); it++) {
 		if(strcmp(it->type, "SWP") == 0) {
@@ -116,6 +126,9 @@ void fix_positions_of_single_qubit_gates(int* locations, int* qubits, vector<QAS
 	}
 }
 
+/**
+ * generate the circuit based on the gates
+ */
 void generate_circuit(vector<vector<QASMparser::gate>>& mapped_circuit, const vector<QASMparser::gate>& all_gates) {
 	int *last_layer = new int[positions];
 	for(int i = 0; i < positions; i++) {

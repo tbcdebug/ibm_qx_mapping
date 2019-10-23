@@ -31,10 +31,10 @@ using namespace std;
  * Control Defines
  */
 #define LOOK_AHEAD           1 // enables the lookahead; is additionally controlled by the constants below
-#define USE_INITIAL_MAPPING  1 // enables initial mapping, it is automatically enabled when using special_opt
+#define USE_INITIAL_MAPPING  0 // enables initial mapping, it is automatically enabled when using special_opt
 #define HEURISTIC_ADMISSIBLE 0 // enables the admissible heuristic approach
-#define ONE_SWAP_PER_EXPAND  1 // decides whether whole permutations or only one swap should be considered for a expansion step
-#define SPECIAL_OPT          1 // enables special optimizations like depth and fidelity; is additionally controlled by the constants below
+#define ONE_SWAP_PER_EXPAND  0 // decides whether whole permutations or only one swap should be considered for a expansion step
+#define SPECIAL_OPT          0 // enables special optimizations like depth and fidelity; is additionally controlled by the constants below
 
 #if SPECIAL_OPT // force initial mapping -> because of keeping track of unmapped gates
 #undef  USE_INITIAL_MAPPING
@@ -42,7 +42,7 @@ using namespace std;
 #endif
 
 #ifndef ARCH
-#define ARCH ARCH_LINEAR_N     // assume default architectures
+#define ARCH ARCH_LINEAR_N     // assume default architecture
 #endif
 
 /*
@@ -66,7 +66,7 @@ const double COST_PERCENTAGE  = 1;//0.05;
 const double DEPTH_PERCENTAGE = 1 - COST_PERCENTAGE;
 const double FIDELITY_FACTOR  = 0;
 const double FIDELITY_NORM    = FIDELITY_FACTOR / 1000;
-const double INVERSE          = DEPTH_PERCENTAGE * (((double)2) * DEPTH_GATE / DEPTH_SWAP) + COST_PERCENTAGE  * 0.57;
+const double INVERSE          = DEPTH_PERCENTAGE * (((double)2) * DEPTH_GATE / DEPTH_SWAP) + COST_PERCENTAGE  * 0.57; // addittional cost if no edge is in the correct direction
 
 // lookahead
 const int    N_LOOK_AHEADS             = 1; // 20

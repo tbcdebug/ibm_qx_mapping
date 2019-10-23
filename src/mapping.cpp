@@ -342,9 +342,8 @@ void mapping(const vector<QASMparser::gate>& gates, vector<vector<QASMparser::ga
 		node result = a_star_fixlayer(i, properties);
 
 		adapt_circuit_properties(properties, result);	
-#if SPECIAL_OPT
 		update_properties(properties, i);
-#endif 
+		
 	    qubits    = properties.qubits;
 	    locations = properties.locations;
 

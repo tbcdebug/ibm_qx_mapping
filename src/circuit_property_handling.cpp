@@ -44,6 +44,7 @@ void adapt_circuit_properties(circuit_properties& p, const node& n) {
  * adapts the properties of the current qubits by considering all gates of the specified layer
  */
 void update_properties(circuit_properties& p, const int layer) {
+#if SPECIAL_OPT
 	for(vector<QASMparser::gate>::iterator it = layers[layer].begin(); it != layers[layer].end(); it++) {
 	    QASMparser::gate g = *it;
 		int pt = p.locations[g.target];
@@ -73,6 +74,7 @@ void update_properties(circuit_properties& p, const int layer) {
         	p.fidelities[pt] += FIDELITY_GATE;
 		}
 	}
+#endif
 }
 
 /**
