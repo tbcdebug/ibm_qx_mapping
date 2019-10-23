@@ -107,8 +107,11 @@ int main(int argc, char** argv) {
 	double    time     = double(clock() - begin_time) / CLOCKS_PER_SEC;
 	int       depth    = mapped_circuit.size();
 	int       cost     = all_gates.size()-total_swaps;
-	long long fidelity = 0;//fidelity_cost(properties.fidelities);
-	
+#if SPECIAL_OPT	
+	long long fidelity = fidelity_cost(properties.fidelities);
+#else
+	long long fidelity = 0;
+#endif
 	// print statistics
 	if(verbose) {
 		cout << endl << "After mapping (no post mapping optimizations are conducted): " << endl;
@@ -126,8 +129,8 @@ int main(int argc, char** argv) {
     	cout << time << ',' << cost << ',' << depth << endl;
 	}
 
+	// dump resulting circuit
 	if(!output.empty()) {
-		//Dump resulting circuit
 		ofstream of(argv[2]);
 
 		of << "OPENQASM 2.0;" << endl;

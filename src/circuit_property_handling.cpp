@@ -1,12 +1,22 @@
 #include "mapper.hpp"
 
+/**
+ * initializes the circuit properties
+ * 	- locations
+ *  - qubits
+ * if special optimization is used -> also 
+ *  - depths
+ *  - fidelities
+ */
 circuit_properties create_circuit_properties() {
     circuit_properties p;
     p.locations  = new int[nqubits];
 	p.qubits     = new int[positions];
+#if SPECIAL_OPT
 	p.depths     = new int[positions]();
 	p.fidelities = new int[positions](); 
-	
+#endif
+
 	//Initially, no physical qubit is occupied
 	for (int i = 0; i < positions; i++) {
 		p.qubits[i] = -1;
@@ -24,11 +34,15 @@ void adapt_circuit_properties(circuit_properties& p, const node& n) {
 	delete_circuit_properties(p);
 	p.locations  = n.locations;
 	p.qubits     = n.qubits;
+#if SPECIAL_OPT
 	p.depths     = n.depths;
 	p.fidelities = n.fidelities;
+#endif
 }
 
-// adapts the properties of the current qubits
+/**
+ * adapts the properties of the current qubits by considering all gates of the specified layer
+ */
 void update_properties(circuit_properties& p, const int layer) {
 	for(vector<QASMparser::gate>::iterator it = layers[layer].begin(); it != layers[layer].end(); it++) {
 	    QASMparser::gate g = *it;
@@ -61,9 +75,14 @@ void update_properties(circuit_properties& p, const int layer) {
 	}
 }
 
+/**
+ * clean up the circuit properties
+ */
 void delete_circuit_properties(circuit_properties& p) {
     delete[] p.locations;
 	delete[] p.qubits;	
+#if SPECIAL_OPT
 	delete[] p.depths;	
 	delete[] p.fidelities;
+#endif
 }

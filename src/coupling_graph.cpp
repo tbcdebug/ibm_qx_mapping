@@ -1,5 +1,9 @@
 #include "mapper.hpp"
 
+/**
+ * static function declarations 
+ */
+
 static void set_dijkstra_node(dijkstra_node* nodes, priority_queue<dijkstra_node*, vector<dijkstra_node*>, dijkstra_node_cmp>& queue,
 			       		      const int parent, const int pos, const bool contains_correct_edge);
 static void dijkstra(dijkstra_node* nodes, const int start, const set<edge>& graph);
@@ -9,8 +13,10 @@ static void build_graph_NN(int nqubits)               UNUSED_FUNCTION;
 static void build_graph_QX5()                         UNUSED_FUNCTION;
 
 
-
-// generate graph from the file, if the file is empty a graph according to ARCH is generated
+/**
+ * generates a graph from the file with the filename input, 
+ * if the name is empty a graph according to ARCH is generated
+ */
 bool generate_graph(const string input) {
     if(input.empty()) {
 #if ARCH == ARCH_LINEAR_N
@@ -57,6 +63,9 @@ bool generate_graph(const string input) {
 	return true;
 }
 
+/**
+ * sets the properties of the dijkstra node for position pos
+ */
 static void set_dijkstra_node(dijkstra_node* nodes, priority_queue<dijkstra_node*, vector<dijkstra_node*>, dijkstra_node_cmp>& queue,
 					          const int parent, const int pos, const bool contains_correct_edge) {
 	if(nodes[pos].length < 0) {
@@ -75,6 +84,9 @@ static void set_dijkstra_node(dijkstra_node* nodes, priority_queue<dijkstra_node
 	}
 }
 
+/**
+ * the dijkstra algorithm calculates the distance from one node to all others
+ */
 static void dijkstra(dijkstra_node* nodes, const int start, const set<edge>& graph) {
 	priority_queue<dijkstra_node*, vector<dijkstra_node*>, dijkstra_node_cmp> queue;
 	queue.push(nodes + start);
@@ -95,7 +107,9 @@ static void dijkstra(dijkstra_node* nodes, const int start, const set<edge>& gra
 	}
 }
 
-// build the distance table
+/**
+ * builds the distance table based on the graph
+ */
 static void build_dist_table(const set<edge>& graph) {
 	dist = new double*[positions];
 
@@ -125,7 +139,9 @@ static void build_dist_table(const set<edge>& graph) {
 	}
 }
 
-//build a graph representing the coupling map of nearest neighbor
+/**
+ * builds a graph representing the coupling map of a linear architecture
+ */
 static void build_graph_linear(int nqubits) {
 	graph.clear();
     
@@ -136,7 +152,9 @@ static void build_graph_linear(int nqubits) {
 	}
 }
 
-//build a graph representing the coupling map of IBM QX5
+/**
+ * builds a graph representing the coupling map of IBM QX5
+ */
 static void build_graph_QX5() {
 	graph.clear();
 	positions = 16;
@@ -209,7 +227,9 @@ static void build_graph_QX5() {
 	graph.insert(e);
 }
 
-//build a graph representing the coupling map of a NN architecture
+/**
+ * builds a graph representing the coupling map of a NN architecture
+ */
 static void build_graph_NN(int nqubits) {
 	build_graph_linear(nqubits);
 	positions = 16;

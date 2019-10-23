@@ -1,6 +1,10 @@
 #include "mapper.hpp"
 
+/**
+ * Initializes the layer based on the gates of a circuit
+ */
 #if ONE_GATE_PER_LAYER
+// this function generates one gate per layer
 vector<vector<QASMparser::gate>> init_layers(const vector<QASMparser::gate> &gates) {
 	unsigned int layer = 0;
 	vector<vector<QASMparser::gate>> layer_gates;
@@ -12,6 +16,7 @@ vector<vector<QASMparser::gate>> init_layers(const vector<QASMparser::gate> &gat
 	return layer_gates;
 }
 #else
+// this function generates the layers in a greedy fashion
 vector<vector<QASMparser::gate>> init_layers(const vector<QASMparser::gate> &gates) {
 	vector<vector<QASMparser::gate>> layer_gates;
 	unsigned int layer;
@@ -40,7 +45,9 @@ vector<vector<QASMparser::gate>> init_layers(const vector<QASMparser::gate> &gat
 }
 #endif
 
-// returns the next layer with cnot gates
+/**
+ * returns the index of the next layer with cnot gates
+ */
 unsigned int get_next_layer(const unsigned int layer) {
 	unsigned int next_layer = layer+1;
 	while(next_layer < layers.size()) {
@@ -54,7 +61,9 @@ unsigned int get_next_layer(const unsigned int layer) {
 	return -1;
 }
 
-// calculates the width of the layer
+/**
+ * calculates the maximal width considering all layerss
+ */
 unsigned int calculate_max_layer_width() {
     unsigned int width = 0;
     for (vector<vector<QASMparser::gate>>::iterator it = layers.begin(); it != layers.end(); it++) {

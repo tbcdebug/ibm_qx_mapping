@@ -142,6 +142,7 @@ public:
     void restart(T& n) 
     {
         delete_queue();
+        queue_ = own_priority_queue<T, vector<T>, CostCompare>();
         queue_.push(n);
     }
 private:
