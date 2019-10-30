@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
 
 	// dump resulting circuit
 	if(!output.empty()) {
-		ofstream of(argv[2]);
+		ofstream of(output);
 
 		of << "OPENQASM 2.0;" << endl;
 		of << "include \"qelib1.inc\";" << endl;
