@@ -1,7 +1,8 @@
 #include "mapper.hpp"
 
 #include <boost/program_options.hpp>
-
+#include <regex>
+#include <math.h>
 
 namespace po = boost::program_options;
 
@@ -17,8 +18,17 @@ set<edge>                                                                    gra
 vector<vector<QASMparser::gate>>                                             layers;
 unique_priority_queue<node, cleanup_node, node_cost_greater, node_func_less> nodes;
 
+double get_pi_div(double val) {
+	if(val == 0) {
+		return 0;
+	}
+	const int precision = 10000;
+	return round(M_PI / val * precision) / precision;
+}
+
 int main(int argc, char** argv) {
-	bool   verbose = false;
+	bool   verbose     = false;
+	bool   real_format = false;
 	string input,  input_coupling;
 	string output, output_statistics;
 
@@ -31,11 +41,13 @@ int main(int argc, char** argv) {
 			("output,o",        po::value<string>(&output),              "output file")
 			("statistic,s",     po::value<string>(&output_statistics),   "output statistics file")
 			("coupling_file,c", po::value<string>(&input_coupling),      "coupling graph - file")
-			("verbose,v",       po::bool_switch(&verbose),               "verbose");
+			("verbose,v",       po::bool_switch(&verbose),               "verbose")
+			("real,r",          po::bool_switch(&real_format),           "output the circuit in the real format");
 
 		po::positional_options_description p;
 		p.add("input",     1);
 		p.add("statistic", 1);
+		p.add("output",    1);
 
 		po::variables_map vm; 
 		po::store(po::command_line_parser(argc, argv).
@@ -132,21 +144,90 @@ int main(int argc, char** argv) {
 	// dump resulting circuit
 	if(!output.empty()) {
 		ofstream of(output);
+		if(real_format) {
+			of << ".numvars "   << nqubits << endl;
+			of << ".variables";
+			for(unsigned int i = 0; i < nqubits; i++) {
+				of << " q" << i;
+			}
+			of << endl;
+			of << ".constants ";
+			for(unsigned int i = 0; i < nqubits; i++) {
+				of << "0";
+			}
+			of << endl;
+			of << ".begin" << endl;
+			for (vector<vector<QASMparser::gate> >::iterator it = mapped_circuit.begin();
+					it != mapped_circuit.end(); it++) {
+				vector<QASMparser::gate> v = *it;
+				for (vector<QASMparser::gate>::iterator it2 = v.begin(); it2 != v.end(); it2++) {
+					string hadamard = "U(pi/2,0,pi)";
+					if(it2->control != -1) {
+						of << "t2 " << "q" << it2->control << " q" << it2->target << endl;
+					} else if(hadamard.compare(it2->type) == 0) {
+						of << "h1 q" << it2->target << endl;
+					} else {
+						std::string s(it2->type);
+						std::regex rgx("U\\(([+-]?([0-9]*[.])?[0-9]+), ([+-]?([0-9]*[.])?[0-9]+), ([+-]?([0-9]*[.])?[0-9]+)\\).*");
+						std::smatch match;
+						
+						if(std::regex_search(s, match, rgx)) {							
+							double theta = stof(match[1]);
+							double phi   = stof(match[3]);
+							double delta = stof(match[5]);
 
-		of << "OPENQASM 2.0;" << endl;
-		of << "include \"qelib1.inc\";" << endl;
-		of << "qreg q[16];" << endl;
-		of << "creg c[16];" << endl;
+							double theta_div = get_pi_div(theta); 
+							double phi_div   = get_pi_div(phi); 
+							double delta_div = get_pi_div(delta);
 
-		for (vector<vector<QASMparser::gate> >::iterator it = mapped_circuit.begin();
-				it != mapped_circuit.end(); it++) {
-			vector<QASMparser::gate> v = *it;
-			for (vector<QASMparser::gate>::iterator it2 = v.begin(); it2 != v.end(); it2++) {
-				of << it2->type << " ";
-				if (it2->control != -1) {
-					of << "q[" << it2->control << "],";
+							/*
+							cout << "THEATA" << theta << endl;
+							cout << "DIV   " << theta_div << endl;
+							cout << "PHI   " << phi << endl;
+							cout << "DIV   " << phi_div << endl;
+							cout << "DELTA " << delta << endl;
+							cout << "DIV   " << delta_div << endl;
+							*/
+
+							// conversion to rotation gates
+							if(phi_div == 0) {
+								of << "rz1:" << 1                     << " q" << it2->target << endl; //1.0 / 3
+							} else {
+								of << "rz1:" << (int)(phi_div / (1 + 3 * phi_div)) << " q" << it2->target << endl;
+							}
+							of << "rx1:" << 2                               << " q" << it2->target << endl;
+							if(theta_div == 0) {
+								of << "rz1:" << 1                           << " q" << it2->target << endl;
+							} else {
+								of << "rz1:" << (int)(theta_div / (1 + theta_div)) << " q" << it2->target << endl;
+							}
+							of << "rx1:" << 2                               << " q" << it2->target << endl;
+							if(delta_div != 0) {
+								of << "rz1:" << delta_div                   << " q" << it2->target << endl;
+							}
+							//for(auto x: match)
+							//	std::cout << "match: " << x << '\n';
+							//s = match.suffix().str();
+						}
+					}
 				}
-				of << "q[" << it2->target << "];" << endl;
+			}
+			of << ".end" << endl;
+		} else {
+			of << "OPENQASM 2.0;"              << endl;
+			of << "include \"qelib1.inc\";"    << endl;
+			of << "qreg q[" << nqubits << "];" << endl;
+			of << "creg c[" << nqubits << "];" << endl;
+
+			for (vector<vector<QASMparser::gate> >::iterator it = mapped_circuit.begin();
+				it != mapped_circuit.end(); it++) {
+				for (vector<QASMparser::gate>::iterator it2 = it->begin(); it2 != it->end(); it2++) {
+					of << it2->type << " ";
+					if (it2->control != -1) {
+						of << "q[" << it2->control << "],";
+					}
+					of << "q[" << it2->target << "];" << endl;
+				}
 			}
 		}
 	}
@@ -159,6 +240,7 @@ int main(int argc, char** argv) {
 	}
 
 	delete_circuit_properties(properties);
+	
 	
 	/*
 	positions = 16;
@@ -187,6 +269,120 @@ int main(int argc, char** argv) {
 	delete_node(n);
 	n = create_node();
 	delete_node(n);
+	*/
+
+	/*
+	std::string s = "u(0.90, 0.00, -0.7)";
+    std::regex rgx("u\\(([+-]?([0-9]*[.])?[0-9]+), ([+-]?([0-9]*[.])?[0-9]+), ([+-]?([0-9]*[.])?[0-9]+)\\).*");
+    
+	std::smatch match;
+	
+    if(std::regex_search(s, match, rgx)) {
+        double theta = stof(match[1]);
+		double phi   = stof(match[3]);
+		double delta = stof(match[5]);
+		
+		cout << theta << endl;
+		cout << phi   << endl;
+		cout << delta << endl;
+		//for(auto x: match)
+		//	std::cout << "match: " << x << '\n';
+		//s = match.suffix().str();
+	}
+	*/
+	/*bool   verbose     = false;
+	bool   real_format = false;
+	string input,  input_coupling;
+	string output, output_statistics;
+
+	// argument handling
+	try {
+		po::options_description desc{"Options"};
+    	desc.add_options()
+			("help,h",                                                   "help screen")
+			("input,i",         po::value<string>(&input)->required(),   "input file")
+			("output,o",        po::value<string>(&output),              "output file")
+			("statistic,s",     po::value<string>(&output_statistics),   "output statistics file")
+			("coupling_file,c", po::value<string>(&input_coupling),      "coupling graph - file")
+			("verbose,v",       po::bool_switch(&verbose),               "verbose")
+			("real,r",          po::bool_switch(&real_format),           "output the circuit in the real format");
+
+		po::positional_options_description p;
+		p.add("input",     1);
+		p.add("statistic", 1);
+
+		po::variables_map vm; 
+		po::store(po::command_line_parser(argc, argv).
+			options(desc).positional(p).run(), vm);
+		
+		if (vm.count("help")) {
+        	cout << desc << endl;
+            return 0;
+        }
+		po::notify(vm);
+	} catch (const po::error &ex) {
+		cerr << ex.what() << endl;
+		exit(ERROR);
+	}
+
+	// parsing	
+	QASMparser* parser = new QASMparser(input.c_str());
+	parser->Parse();
+
+	vector<QASMparser::gate> gates = parser->getGates();
+	nqubits = parser->getNqubits();
+	ngates  = parser->getNgates();
+
+	parser->clear();
+	delete parser;
+	real_format = true;
+
+	// dump resulting circuit
+	if(!output.empty()) {
+		ofstream of(output);
+		if(real_format) {
+			of << ".numvars "   << nqubits << endl;
+			of << ".variables";
+			for(unsigned int i = 0; i < nqubits; i++) {
+				of << " q" << i;
+			}
+			of << endl;
+			of << ".constants ";
+			for(unsigned int i = 0; i < nqubits; i++) {
+				of << "0";
+			}
+			of << endl;
+			of << ".begin" << endl;
+			for (vector<QASMparser::gate>::iterator it = gates.begin();
+					it != gates.end(); it++) {
+				string hadamard = "U(pi/2,0,pi)";
+				if(it->control != -1) {
+					of << "t2 " << "q[" << it->control << "] q[" << it->target << "];" << endl;
+				} else if(hadamard.compare(it->type) == 0) {
+					of << "h1 q[" << it->target << "];" << endl;
+				} else {
+					std::string s(it->type);
+					std::regex rgx("u\\(([+-]?([0-9]*[.])?[0-9]+), ([+-]?([0-9]*[.])?[0-9]+), ([+-]?([0-9]*[.])?[0-9]+)\\).*");
+					
+					std::smatch match;
+					if(std::regex_search(s, match, rgx)) {
+						double theta = stof(match[1]);
+						double phi   = stof(match[3]);
+						double delta = stof(match[5]);
+						
+						cout << theta << endl;
+						cout << phi   << endl;
+						cout << delta << endl;
+						//for(auto x: match)
+						//	std::cout << "match: " << x << '\n';
+						//s = match.suffix().str();
+					}
+				}
+			}
+			of << ".end" << endl;
+		} else {
+		}
+	}
 	*/
 	return 0;
 }
