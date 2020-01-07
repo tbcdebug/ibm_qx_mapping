@@ -4,6 +4,8 @@
 #include <set>
 #include <climits>
 #include <fstream>
+#include <regex>
+#include <math.h>
 
 #include "QASMparser.h"
 #include "unique_priority_queue.h"
@@ -12,7 +14,8 @@
 #define HEURISTIC_ADMISSIBLE 0
 #define USE_INITIAL_MAPPING 0
 #define MINIMAL_OUTPUT 1
-#define DUMP_MAPPED_CIRCUIT 0
+#define DUMP_MAPPED_CIRCUIT 1
+#define DUMP_STATISTICS 1
 
 #define ARCH_LINEAR_N 0
 #define ARCH_IBM_QX5 1
@@ -22,6 +25,7 @@
 #define ARCH ARCH_LINEAR_N
 #endif
 
+using namespace std;
 
 int** dist;
 int positions;
@@ -519,8 +523,16 @@ node a_star_fixlayer(int layer, int* map, int* loc, int** dist) {
 	return result;
 }
 
-int main(int argc, char** argv) {
+double get_pi_div(double val) {
+	if(val == 0) {
+		return 0;
+	}
+	const int precision = 10000;
+	return round(M_PI / val * precision) / precision;
+}
 
+int main(int argc, char** argv) {
+/*
 #if DUMP_MAPPED_CIRCUIT
 	if(argc != 3) {
         std::cerr << "Usage: " << argv[0] << " <input_file> <output_file>" << std::endl;
@@ -532,7 +544,7 @@ int main(int argc, char** argv) {
         std::exit(1);
 	}
 #endif
-
+*/
 	QASMparser* parser = new QASMparser(argv[1]);
 	parser->Parse();
 
@@ -839,27 +851,105 @@ int main(int argc, char** argv) {
 #endif
 
 #if DUMP_MAPPED_CIRCUIT
+	assert(argc > 3);
 	//Dump resulting circuit
-	std::ofstream of(argv[2]);
-
-	of << "OPENQASM 2.0;" << std::endl;
-	of << "include \"qelib1.inc\";" << std::endl;
-	of << "qreg q[16];" << std::endl;
-	of << "creg c[16];" << std::endl;
-
-	for (std::vector<std::vector<QASMparser::gate> >::iterator it = mapped_circuit.begin();
-			it != mapped_circuit.end(); it++) {
-		std::vector<QASMparser::gate> v = *it;
-		for (std::vector<QASMparser::gate>::iterator it2 = v.begin(); it2 != v.end(); it2++) {
-			of << it2->type << " ";
-			if (it2->control != -1) {
-				of << "q[" << it2->control << "],";
+	std::ofstream of(argv[3]);
+	bool real_format = false;
+	if(real_format) {
+			of << ".numvars "   << nqubits << endl;
+			of << ".variables";
+			for(unsigned int i = 0; i < nqubits; i++) {
+				of << " q" << i;
 			}
-			of << "q[" << it2->target << "];" << std::endl;
-		}
-	}
-#endif
+			of << endl;
+			of << ".constants ";
+			for(unsigned int i = 0; i < nqubits; i++) {
+				of << "0";
+			}
+			of << endl;
+			of << ".begin" << endl;
+			for (vector<vector<QASMparser::gate> >::iterator it = mapped_circuit.begin();
+					it != mapped_circuit.end(); it++) {
+				vector<QASMparser::gate> v = *it;
+				for (vector<QASMparser::gate>::iterator it2 = v.begin(); it2 != v.end(); it2++) {
+					string hadamard = "U(pi/2,0,pi)";
+					if(it2->control != -1) {
+						of << "t2 " << "q" << it2->control << " q" << it2->target << endl;
+					} else if(hadamard.compare(it2->type) == 0) {
+						of << "h1 q" << it2->target << endl;
+					} else {
+						std::string s(it2->type);
+						std::regex rgx("U\\(([+-]?([0-9]*[.])?[0-9]+), ([+-]?([0-9]*[.])?[0-9]+), ([+-]?([0-9]*[.])?[0-9]+)\\).*");
+						std::smatch match;
+						
+						if(std::regex_search(s, match, rgx)) {							
+							double theta = stof(match[1]);
+							double phi   = stof(match[3]);
+							double delta = stof(match[5]);
 
+							double theta_div = get_pi_div(theta); 
+							double phi_div   = get_pi_div(phi); 
+							double delta_div = get_pi_div(delta);
+
+							/*
+							cout << "THEATA" << theta << endl;
+							cout << "DIV   " << theta_div << endl;
+							cout << "PHI   " << phi << endl;
+							cout << "DIV   " << phi_div << endl;
+							cout << "DELTA " << delta << endl;
+							cout << "DIV   " << delta_div << endl;
+							*/
+
+							// conversion to rotation gates
+							if(phi_div == 0) {
+								of << "rz1:" << 1                     << " q" << it2->target << endl; //1.0 / 3
+							} else {
+								of << "rz1:" << (int)(phi_div / (1 + 3 * phi_div)) << " q" << it2->target << endl;
+							}
+							of << "rx1:" << 2                               << " q" << it2->target << endl;
+							if(theta_div == 0) {
+								of << "rz1:" << 1                           << " q" << it2->target << endl;
+							} else {
+								of << "rz1:" << (int)(theta_div / (1 + theta_div)) << " q" << it2->target << endl;
+							}
+							of << "rx1:" << 2                               << " q" << it2->target << endl;
+							if(delta_div != 0) {
+								of << "rz1:" << delta_div                   << " q" << it2->target << endl;
+							}
+							//for(auto x: match)
+							//	std::cout << "match: " << x << '\n';
+							//s = match.suffix().str();
+						}
+					}
+				}
+			}
+			of << ".end" << endl;
+		} else {
+			of << "OPENQASM 2.0;" << endl;
+			of << "include \"qelib1.inc\";" << endl;
+			of << "qreg q[16];" << endl;
+			of << "creg c[16];" << endl;
+
+			for (vector<vector<QASMparser::gate> >::iterator it = mapped_circuit.begin();
+				it != mapped_circuit.end(); it++) {
+				for (vector<QASMparser::gate>::iterator it2 = it->begin(); it2 != it->end(); it2++) {
+					of << it2->type << " ";
+					if (it2->control != -1) {
+						of << "q[" << it2->control << "],";
+					}
+					of << "q[" << it2->target << "];" << endl;
+				}
+			}
+		}
+#endif
+#if DUMP_STATISTICS
+    assert(argc > 2);
+	int       depth    = mapped_circuit.size();
+	int       cost     = all_gates.size()-total_swaps;
+	std::ofstream ofstat (argv[2], std::ofstream::app);
+	//ofstat << bName << " : " << time << " " << depth << " " << cost << " " << fidelity << " " << alloc_tries << " " << total_swaps << endl;
+	ofstat << bName << " : " << time << " " << depth << " " << cost << " " << 0 << " " << " " << total_swaps << std::endl;
+#endif
 	delete[] locations;
 	delete[] qubits;
 	delete[] last_layer;
