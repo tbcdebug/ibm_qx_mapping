@@ -3,7 +3,8 @@ project( ibm_qx_mapping )
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
 
-SET(CMAKE_CXX_FLAGS "-Wall -g -O2 -DNDEBUG -DVERSION=\"$(VERSION)\" -std=c++11")
+SET(CMAKE_CXX_FLAGS "-Wall -g -O2 -DVERSION=\"$(VERSION)\" -std=c++11") 
+#-DNDEBUG 
 
 include_directories(src)
 

@@ -341,7 +341,14 @@ void mapping(const vector<QASMparser::gate>& gates, vector<vector<QASMparser::ga
 #if USE_INITIAL_MAPPING
 	initial_mapping(properties);	
 #endif
-
+	for(int i = 0; i < (int)nqubits; i++) {
+		assert(i            == properties.locations[i]);
+		assert(properties.locations[i] == properties.qubits[properties.locations[i]]);
+	}
+	for(int i = 0; i < (int)nqubits; i++) {
+		assert(i            == locations[i]);
+		assert(locations[i] == qubits[locations[i]]);
+	}
 	//Fix the mapping of each layer
 	for (unsigned int i = 0; i < layers.size(); i++) {
 		node result = a_star_fixlayer(i, properties);
@@ -354,7 +361,10 @@ void mapping(const vector<QASMparser::gate>& gates, vector<vector<QASMparser::ga
 
         vector<QASMparser::gate> h_gates = vector<QASMparser::gate>();
 		//The first layer does not require a permutation of the qubits
-		if (i != 0) {
+#if !VERIFICATION
+		if (i != 0) 
+#endif
+		{
 			//Add the required SWAPs to the circuits
 			for (SWAP_LIST_TYPE::iterator it = result.swaps.begin();
 				 it != result.swaps.end(); it++) {
@@ -478,7 +488,9 @@ void mapping(const vector<QASMparser::gate>& gates, vector<vector<QASMparser::ga
 		}
 
 	}	
-
+#if VERIFICATION
+	map_to_inital_permutation(all_gates, properties);
+#endif
 	fix_positions_of_single_qubit_gates(locations, qubits, all_gates);
 	generate_circuit(mapped_circuit, all_gates);
 }

@@ -30,13 +30,16 @@ using namespace std;
 /**
  * Control Defines
  */
+#define VERIFICATION         1 // maps all logical qubits to physical qubits with the same index and adds a swap layer at the the end
+							   // this swap layer ignores constraints
+
 #define LOOK_AHEAD           1 // enables the lookahead; is additionally controlled by the constants below
-#define USE_INITIAL_MAPPING  0 // enables initial mapping, it is automatically enabled when using special_opt
+#define USE_INITIAL_MAPPING  1 // enables initial mapping, it is automatically enabled when using special_opt
 #define HEURISTIC_ADMISSIBLE 0 // enables the admissible heuristic approach
 #define ONE_SWAP_PER_EXPAND  0 // decides whether whole permutations or only one swap should be considered for a expansion step
 #define SPECIAL_OPT          0 // enables special optimizations like depth and fidelity; is additionally controlled by the constants below
 
-#if SPECIAL_OPT // force initial mapping -> because of keeping track of unmapped gates
+#if SPECIAL_OPT || VERIFCATION // force initial mapping -> because of keeping track of unmapped gates
 #undef  USE_INITIAL_MAPPING
 #define USE_INITIAL_MAPPING  1
 #endif
@@ -247,5 +250,7 @@ void map_to_min_distance(int* map, int* loc, const int source, const int target)
 void map_unmapped_gates(const int layer, circuit_properties& p, node& n, vector<int>& considered_qubits);
 void fix_positions_of_single_qubit_gates(int* locations, int* qubits, vector<QASMparser::gate>& all_gates);
 void generate_circuit(vector<vector<QASMparser::gate>>& mapped_circuit, const vector<QASMparser::gate>& all_gates);
+void map_to_inital_permutation(vector<QASMparser::gate>& all_gates, circuit_properties& properties); // add swaps so that each logical qubit is mapped to the pysical qubit with the same index
+
 
 #endif /* MAPPER_H_ */
